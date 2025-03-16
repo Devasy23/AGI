@@ -89,8 +89,24 @@ The application provides a user-friendly interface to configure:
 ## Usage
 
 1. **Start the Streamlit application**:
+   
+   There are multiple ways to run the app while maintaining correct imports:
+
    ```bash
-   streamlit run app.py
+   # Option 1: Using the -m flag (recommended for proper imports)
+   streamlit run -m src.app
+
+   # Option 2: From the project root, specify the full path
+   streamlit run src/app.py
+
+   # Option 3: Setting PYTHONPATH before running
+   # On Windows
+   set PYTHONPATH=C:\Users\Devasy\OneDrive\Desktop\AGI
+   streamlit run src/app.py
+   
+   # On Linux/macOS
+   export PYTHONPATH=/path/to/AGI
+   streamlit run src/app.py
    ```
 
 2. **Configure your environment** using the sidebar controls.
@@ -172,6 +188,32 @@ The framework follows a modular architecture:
 7. **Use Pydantic Models**: Follow the pattern of using Pydantic models for structured data.
 
 8. **Error Handling**: Implement proper error handling and provide informative error messages.
+
+## Troubleshooting
+
+### Import Errors
+
+If you encounter errors like `ImportError: attempted relative import beyond top-level package`, try one of these solutions:
+
+1. **Run the application as a module**:
+   ```bash
+   python -m src.app
+   ```
+   
+2. **Use absolute imports** in your code instead of relative imports:
+   ```python
+   # Instead of: from ..llm.llm_factory import LLMFactory
+   from src.llm.llm_factory import LLMFactory
+   ```
+
+3. **Set the PYTHONPATH** environment variable before running the app:
+   ```bash
+   # On Windows
+   set PYTHONPATH=C:\Users\Devasy\OneDrive\Desktop\AGI
+   
+   # On Linux/macOS
+   export PYTHONPATH=/path/to/AGI
+   ```
 
 ## License
 
