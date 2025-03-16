@@ -1,0 +1,2 @@
+faiss-cpu>=1.7.4  # Use faiss-gpu for GPU support
+sentence-transformers>=2.5.1
