@@ -3,7 +3,7 @@ from .llm_interface import LLMInterface
 from .ollama_llm import OllamaLLM
 from .groq_llm import GroqLLM
 from .gemini_llm import GeminiLLM
-from ..config.llm_config import LLMConfig
+from src.config.llm_config import LLMConfig
 
 class LLMFactory:
     _providers: Dict[str, Type[LLMInterface]] = {

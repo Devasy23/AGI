@@ -2,7 +2,7 @@ import groq
 import json
 from typing import List, Dict, Any
 from .llm_interface import LLMInterface
-from ..config.llm_config import LLMConfig
+from src.config.llm_config import LLMConfig
 
 class GroqLLM(LLMInterface):
     def __init__(self):
