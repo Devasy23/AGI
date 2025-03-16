@@ -1,6 +1,6 @@
 import streamlit as st
 from typing import Optional, Any, Dict
-from ..config import Config, MemoryConfig
+from src.config import Config, MemoryConfig
 
 class StreamlitUI:
     @staticmethod
