@@ -1,24 +1,20 @@
-from abc import ABC, abstractmethod
-from typing import List, Dict, Any
-from ..agents.models import AgentRes
+from typing import List, Union, Dict, Any, TypeVar, Generic, Protocol, Type, TYPE_CHECKING
 
-class MemoryInterface(ABC):
-    @abstractmethod
-    def add_memory(self, lst_res: List[AgentRes], user_q: str) -> None:
-        """Add new memories from agent responses"""
-        pass
+# Use TYPE_CHECKING to avoid circular imports
+if TYPE_CHECKING:
+    from src.agents.models import AgentRes
+
+class MemoryInterface(Protocol):
+    """Interface for memory implementations."""
     
-    @abstractmethod
-    def get_relevant_context(self, query: str) -> List[Dict[str, str]]:
-        """Retrieve relevant context based on the query"""
-        pass
+    def add(self, message: Union[Dict[str, Any], "AgentRes"]) -> None:
+        """Add a message to memory."""
+        ...
     
-    @abstractmethod
-    def save_state(self) -> None:
-        """Save the current memory state"""
-        pass
+    def get(self) -> List[Union[Dict[str, Any], "AgentRes"]]:
+        """Get all messages from memory."""
+        ...
     
-    @abstractmethod
-    def load_state(self) -> None:
-        """Load the saved memory state"""
-        pass
+    def clear(self) -> None:
+        """Clear all messages from memory."""
+        ...

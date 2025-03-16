@@ -1,12 +1,24 @@
 from typing import List, Dict, Any
 import json
 from .memory_interface import MemoryInterface
-from ..agents.models import AgentRes
+from src.agents.models import AgentRes
 
 class SimpleMemory(MemoryInterface):
+    """A simple implementation of memory interface that stores messages in a list."""
+    
     def __init__(self):
+        self.messages = []
         self.memories: List[Dict[str, str]] = []
         self.queries: List[str] = []
+    
+    def add(self, message):
+        self.messages.append(message)
+        
+    def get(self):
+        return self.messages
+        
+    def clear(self):
+        self.messages = []
     
     def add_memory(self, lst_res: List[AgentRes], user_q: str) -> None:
         if user_q not in self.queries:
@@ -21,7 +33,7 @@ class SimpleMemory(MemoryInterface):
             }
             self.memories.append(memory_entry)
     
-    def get_relevant_context(self, query: str) -> List[Dict[str, str]]:
+    def get_relevant_context(self, query: str) -> List[Dict[str, str]]: 
         # Simple implementation - return all memories as context
         # This can be enhanced with vector similarity search later
         context = []
