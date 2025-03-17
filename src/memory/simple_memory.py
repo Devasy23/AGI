@@ -1,7 +1,10 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union, TYPE_CHECKING
 import json
 from .memory_interface import MemoryInterface
-from src.agents.models import AgentRes
+
+# Only import at type checking time
+if TYPE_CHECKING:
+    from src.agents.models import AgentRes
 
 class SimpleMemory(MemoryInterface):
     """A simple implementation of memory interface that stores messages in a list."""
@@ -20,7 +23,7 @@ class SimpleMemory(MemoryInterface):
     def clear(self):
         self.messages = []
     
-    def add_memory(self, lst_res: List[AgentRes], user_q: str) -> None:
+    def add_memory(self, lst_res: List['AgentRes'], user_q: str) -> None:
         if user_q not in self.queries:
             self.queries.append(user_q)
             
