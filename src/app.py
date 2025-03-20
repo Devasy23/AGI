@@ -49,16 +49,15 @@ if question := st.chat_input("Ask your question"):
     try:
         with st.spinner('Processing...'):
             graph = workflow.create_graph()
-            for output in graph.stream(initial_state):
-                st.session_state.memory.save_state()  # Save memory state after each step
-                
-                # Update UI based on output
-                if 'current_step' in output:
-                    current_step_container.write(f"Current step: {output['current_step']}")
-                if 'lst_res' in output:
-                    for res in output['lst_res']:
-                        if res.tool_name == "final_answer":
-                            ui.add_chat_message("assistant", res.tool_output)
+            result = graph.invoke(initial_state)
+            
+            # Handle final answer
+            if 'output' in result and hasattr(result['output'], 'tool_output'):
+                final_answer = result['output'].tool_output
+                ui.add_chat_message("assistant", final_answer)
+            
+            # Save memory state
+            st.session_state.memory.save_state()
                 
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")

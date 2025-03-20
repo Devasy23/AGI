@@ -50,40 +50,22 @@ class StreamlitUI:
     def add_chat_message(role: str, content: str, is_progress: bool = False):
         """Add a new message to chat history"""
         if is_progress:
-            # Add to progress updates
-            st.session_state.progress_updates.append({"role": role, "content": content})
-            # Show in progress expander
+            # Show progress updates in expander
             if not st.session_state.progress_expander:
                 st.session_state.progress_expander = st.expander("Processing Steps", expanded=True)
             with st.session_state.progress_expander:
-                st.write(f"**{role}**: {content}")
+                st.markdown(f"**{role}**: {content}")
         else:
-            # Regular chat message
-            st.session_state.messages.append({"role": role, "content": content})
+            # Add to chat history and display
+            message = {"role": role, "content": content}
+            st.session_state.messages.append(message)
             with st.chat_message(role):
-                st.write(content)
-            # Clear progress expander and updates when final answer is added
-            st.session_state.progress_expander = None
-            st.session_state.progress_updates = []
-
-    @staticmethod
-    def create_human_feedback_buttons():
-        """Create human feedback buttons with proper layout"""
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            yes_clicked = st.button("Yes", key="yes_button")
-            if yes_clicked:
-                st.session_state.human_choice = "Agent2"
-        with col2:
-            no_clicked = st.button("No", key="no_button")
-            if no_clicked:
-                st.session_state.human_choice = "END"
-        
-        if st.session_state.human_choice:
-            choice = st.session_state.human_choice
-            st.session_state.human_choice = None
-            return choice
-        return None
+                st.markdown(content)
+            
+            # Clear progress if this was a final answer
+            if content.startswith("Final Answer:"):
+                if st.session_state.progress_expander:
+                    st.session_state.progress_expander = None
 
     @staticmethod
     def setup_memory_config_ui():
