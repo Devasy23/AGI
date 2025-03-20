@@ -11,7 +11,7 @@ class GroqLLM(LLMInterface):
     
     def chat(self, messages: List[Dict[str, str]], format: str = "json") -> Dict[str, Any]:
         completion = self.client.chat.completions.create(
-            model="mixtral-8x7b-32768",  # Using Mixtral model
+            model=self.config["model_name"],  # Using Mixtral model
             messages=messages,
             response_format={"type": "json_object"} if format == "json" else None
         )

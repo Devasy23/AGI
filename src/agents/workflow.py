@@ -138,9 +138,9 @@ class AgentWorkflow:
         return """
         Your goal is to use the `tool_wikipedia` ONLY ONCE to enrich the information already available.
         Note, when using a tool, you provide the tool name and the arguments to use in JSON format. 
-        For each call, you MUST ONLY use one tool AND the response format must ALWAYS be in the pattern:
-        ```json
+        For each call, you MUST ONLY use one tool AND the response format must ALWAYS be in the json response pattern given below:
+        
         {"name":"<tool_name>", "parameters": {"<tool_input_key>":<tool_input_value>}}
-        ```
+        
         First you must use the `tool_wikipedia`, then elaborate the information to answer the user's question with `final_answer` tool.
         """

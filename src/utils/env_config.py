@@ -48,16 +48,16 @@ class EnvConfig:
                 index=["ollama", "groq", "gemini"].index(EnvConfig.get_env("LLM_PROVIDER", "ollama"))
             )
             
+            model = st.text_input("Enter Model Name", value=EnvConfig.get_env("LLM_MODEL", "gemma3:4b"))
             # Provider-specific settings
-            if provider == "ollama":
-                model = st.text_input("Ollama Model", value=EnvConfig.get_env("LLM_MODEL", "gemma3:4b"))
-            elif provider == "groq":
-                api_key = st.text_input("Groq API Key", value=EnvConfig.get_env("GROQ_API_KEY", ""), type="password")
-            elif provider == "gemini":
-                api_key = st.text_input("Gemini API Key", value=EnvConfig.get_env("GEMINI_API_KEY", ""), type="password")
+            if provider in ["groq", "gemini"]:
+                api_key = st.text_input("API Key", value=EnvConfig.get_env("GROQ_API_KEY" if provider == "groq" else "GEMINI_API_KEY", ""), type
+                ="password")
+
             
             # Save button
             if st.button("Save Configuration"):
+                st.write(f"Debug out: {provider}, {model}, {api_key}")
                 new_env = {
                     "LLM_PROVIDER": provider,
                     "LLM_MODEL": model if provider == "ollama" else EnvConfig.get_env("LLM_MODEL"),
@@ -65,4 +65,9 @@ class EnvConfig:
                     "GEMINI_API_KEY": api_key if provider == "gemini" else EnvConfig.get_env("GEMINI_API_KEY")
                 }
                 st.session_state.env_vars = new_env
+                st.write(".env file updated successfully")
+                # Save to .env file
+                with open(".env", "w") as f:
+                    for key, value in new_env.items():
+                        f.write(f"{key}={value}\n")
                 st.success("Configuration saved!")
