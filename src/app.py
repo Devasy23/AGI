@@ -1,6 +1,6 @@
 import streamlit as st
-from agents.workflow import AgentWorkflow
-from agents.models import State
+import asyncio
+from agents.crew_workflow import CrewWorkflow
 from utils import StreamlitUI, EnvConfig
 
 # Initialize UI and environment
@@ -17,7 +17,7 @@ st.write("Ask a question and the agents will search for information using multip
 
 # Initialize workflow
 try:
-    workflow = AgentWorkflow()
+    workflow = CrewWorkflow()
 except ValueError as e:
     st.error(f"Configuration error: {str(e)}")
     st.stop()
@@ -30,23 +30,15 @@ if question := st.chat_input("Ask your question"):
     # Add user message to chat
     ui.add_chat_message("user", question)
     
-    # Create initial state
-    initial_state = {
-        'user_q': question,
-        'chat_history': [],
-        'lst_res': [],
-        'output': {}
-    }
-    
     # Run the workflow
     try:
         with st.spinner('Processing...'):
-            graph = workflow.create_graph()
-            result = graph.invoke(input=initial_state)
-            final_answer = result['output'].tool_output
+            # Run the async workflow
+            result = asyncio.run(workflow.run(question))
             
-            # Add assistant response
-            ui.add_chat_message("assistant", final_answer)
+            # Add final answer to chat
+            ui.add_chat_message("assistant", result)
+            
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
 

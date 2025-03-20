@@ -3,6 +3,7 @@ from .llm_interface import LLMInterface
 from .ollama_llm import OllamaLLM
 from .groq_llm import GroqLLM
 from .gemini_llm import GeminiLLM
+from .crew_adapter import CrewLLMAdapter
 from src.config.llm_config import LLMConfig
 
 class LLMFactory:
@@ -22,3 +23,9 @@ class LLMFactory:
             raise ValueError(f"Unsupported LLM provider: {provider}")
         
         return cls._providers[provider]()
+    
+    @classmethod
+    def create_crew_llm(cls) -> CrewLLMAdapter:
+        """Create a CrewAI-compatible LLM instance"""
+        llm = cls.create_llm()
+        return CrewLLMAdapter(llm)
