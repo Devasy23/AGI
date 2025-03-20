@@ -14,6 +14,10 @@ class StreamlitUI:
             st.session_state.human_choice = None
         if 'env_vars' not in st.session_state:
             st.session_state.env_vars = Config.get_all()
+        if 'progress_expander' not in st.session_state:
+            st.session_state.progress_expander = None
+        if 'progress_updates' not in st.session_state:
+            st.session_state.progress_updates = []
 
     @staticmethod
     def setup_sidebar():
@@ -30,6 +34,8 @@ class StreamlitUI:
     def update_current_step(step: str, container: Optional[Any] = None):
         """Update the current step in session state and UI"""
         st.session_state.current_step = step
+        # Add step to progress updates
+        StreamlitUI.add_chat_message("system", f"Step: {step}", is_progress=True)
         if container:
             container.info(step)
 
@@ -41,11 +47,24 @@ class StreamlitUI:
                 st.write(message["content"])
 
     @staticmethod
-    def add_chat_message(role: str, content: str):
+    def add_chat_message(role: str, content: str, is_progress: bool = False):
         """Add a new message to chat history"""
-        st.session_state.messages.append({"role": role, "content": content})
-        with st.chat_message(role):
-            st.write(content)
+        if is_progress:
+            # Add to progress updates
+            st.session_state.progress_updates.append({"role": role, "content": content})
+            # Show in progress expander
+            if not st.session_state.progress_expander:
+                st.session_state.progress_expander = st.expander("Processing Steps", expanded=True)
+            with st.session_state.progress_expander:
+                st.write(f"**{role}**: {content}")
+        else:
+            # Regular chat message
+            st.session_state.messages.append({"role": role, "content": content})
+            with st.chat_message(role):
+                st.write(content)
+            # Clear progress expander and updates when final answer is added
+            st.session_state.progress_expander = None
+            st.session_state.progress_updates = []
 
     @staticmethod
     def create_human_feedback_buttons():

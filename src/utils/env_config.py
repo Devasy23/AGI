@@ -34,6 +34,15 @@ class EnvConfig:
         if key not in st.session_state.get("env_vars", {}):
             st.session_state.env_vars = EnvConfig.load_env()
         return st.session_state.env_vars.get(key, default)
+
+    @staticmethod
+    def reload_config():
+        """Reload configuration from session state"""
+        if hasattr(st.session_state, 'env_vars'):
+            for key, value in st.session_state.env_vars.items():
+                os.environ[key] = str(value)
+            from src.config import Config
+            Config.validate_all()  # Validate new configuration
     
     @staticmethod
     def setup_env_ui():
@@ -57,7 +66,6 @@ class EnvConfig:
             
             # Save button
             if st.button("Save Configuration"):
-                st.write(f"Debug out: {provider}, {model}, {api_key}")
                 new_env = {
                     "LLM_PROVIDER": provider,
                     "LLM_MODEL": model if provider == "ollama" else EnvConfig.get_env("LLM_MODEL"),
@@ -65,9 +73,5 @@ class EnvConfig:
                     "GEMINI_API_KEY": api_key if provider == "gemini" else EnvConfig.get_env("GEMINI_API_KEY")
                 }
                 st.session_state.env_vars = new_env
-                st.write(".env file updated successfully")
-                # Save to .env file
-                with open(".env", "w") as f:
-                    for key, value in new_env.items():
-                        f.write(f"{key}={value}\n")
+                EnvConfig.reload_config()  # Reload configuration immediately
                 st.success("Configuration saved!")
