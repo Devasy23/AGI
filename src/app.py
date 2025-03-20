@@ -2,6 +2,7 @@ import streamlit as st
 from agents.workflow import AgentWorkflow
 from agents.models import State
 from utils import StreamlitUI, EnvConfig
+from memory import SimpleMemory
 
 # Initialize UI and environment
 ui = StreamlitUI()
@@ -11,13 +12,19 @@ current_step_container = ui.setup_sidebar()
 # Setup environment configuration UI
 EnvConfig.setup_env_ui()
 
+# Initialize persistent memory in session state
+if 'memory' not in st.session_state:
+    st.session_state.memory = SimpleMemory()
+    # Try to load previous state
+    st.session_state.memory.load_state()
+
 # Create main UI
 st.title("Multi-Agent Search Assistant")
 st.write("Ask a question and the agents will search for information using multiple sources.")
 
-# Initialize workflow
+# Initialize workflow with existing memory
 try:
-    workflow = AgentWorkflow()
+    workflow = AgentWorkflow(memory=st.session_state.memory)
 except ValueError as e:
     st.error(f"Configuration error: {str(e)}")
     st.stop()
@@ -42,13 +49,20 @@ if question := st.chat_input("Ask your question"):
     try:
         with st.spinner('Processing...'):
             graph = workflow.create_graph()
-            result = graph.invoke(input=initial_state)
-            final_answer = result['output'].tool_output
-            
-            # Add assistant response
-            ui.add_chat_message("assistant", final_answer)
+            for output in graph.stream(initial_state):
+                st.session_state.memory.save_state()  # Save memory state after each step
+                
+                # Update UI based on output
+                if 'current_step' in output:
+                    current_step_container.write(f"Current step: {output['current_step']}")
+                if 'lst_res' in output:
+                    for res in output['lst_res']:
+                        if res.tool_name == "final_answer":
+                            ui.add_chat_message("assistant", res.tool_output)
+                
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
+        raise e
 
 # Update current step display
 if st.session_state.current_step:

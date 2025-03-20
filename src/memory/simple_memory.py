@@ -14,12 +14,12 @@ class SimpleMemory(MemoryInterface):
         self.messages = []
         self.memories: List[Dict[str, str]] = []
         self.queries: List[str] = []
-        self.conversation_window = 10  # Keep last N messages for context
+        self.conversation_window = 50  # Increased window size for better context
     
     def add(self, message):
         self.messages.append(message)
-        # Trim messages to keep only recent context
-        if len(self.messages) > self.conversation_window:
+        # Only trim if significantly over the window size to avoid frequent trimming
+        if len(self.messages) > self.conversation_window + 10:
             self.messages = self.messages[-self.conversation_window:]
         
     def get(self):
@@ -33,6 +33,8 @@ class SimpleMemory(MemoryInterface):
     def add_memory(self, lst_res: List['AgentRes'], user_q: str) -> None:
         if user_q not in self.queries:
             self.queries.append(user_q)
+            # Add user query to conversation context
+            self.add({"role": "user", "content": user_q})
             
         for res in [res for res in lst_res if res.tool_output is not None]:
             memory_entry = {
@@ -44,33 +46,35 @@ class SimpleMemory(MemoryInterface):
             }
             self.memories.append(memory_entry)
             
-            # Add tool interactions to conversation context
+            # Add tool interactions and responses to conversation context
             self.add({
-                "role": "system",
-                "content": f"Tool {res.tool_name} was used with input: {res.tool_input}"
+                "role": "assistant",
+                "content": f"Using {res.tool_name} to help answer your question."
             })
             self.add({
                 "role": "system",
-                "content": f"Tool output: {res.tool_output}"
+                "content": f"Result: {res.tool_output}"
             })
     
     def get_relevant_context(self, query: str) -> List[Dict[str, str]]: 
         context = []
         
-        # Add recent conversation history
-        context.extend(self.messages[-5:])  # Last 5 messages for immediate context
+        # Add more recent conversation history
+        context.extend(self.messages[-15:])  # Last 15 messages for immediate context
         
-        # Add relevant tool interactions
+        # Add relevant tool interactions with better relevance matching
         relevant_memories = []
+        query_words = set(query.lower().split())
+        
         for memory in self.memories:
-            # Simple relevance check - can be enhanced with embeddings
-            if (any(word in memory["query"].lower() for word in query.lower().split()) or
-                any(word in memory["output"].lower() for word in query.lower().split())):
+            memory_text = f"{memory['query']} {memory['output']}".lower()
+            # Check for any word overlap between query and memory
+            if any(word in memory_text for word in query_words):
                 relevant_memories.append(memory)
         
-        # Sort by timestamp if available and take most recent
+        # Sort by timestamp and take most recent relevant memories
         relevant_memories.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-        for memory in relevant_memories[:3]:  # Take top 3 relevant memories
+        for memory in relevant_memories[:5]:  # Include more relevant memories
             context.extend([
                 {"role": "system", 
                  "content": f"Previously for query '{memory['query']}', tool {memory['tool']} was used:"},
@@ -84,9 +88,28 @@ class SimpleMemory(MemoryInterface):
         return context
     
     def save_state(self) -> None:
-        # TODO: Implement persistence
-        pass
+        """Save memory state to a file"""
+        state = {
+            "messages": self.messages,
+            "memories": self.memories,
+            "queries": self.queries
+        }
+        try:
+            with open("memory_state.json", "w") as f:
+                json.dump(state, f)
+        except Exception as e:
+            print(f"Failed to save memory state: {e}")
     
     def load_state(self) -> None:
-        # TODO: Implement loading
-        pass
+        """Load memory state from a file"""
+        try:
+            with open("memory_state.json", "r") as f:
+                state = json.load(f)
+                self.messages = state.get("messages", [])
+                self.memories = state.get("memories", [])
+                self.queries = state.get("queries", [])
+        except FileNotFoundError:
+            # No previous state exists
+            pass
+        except Exception as e:
+            print(f"Failed to load memory state: {e}")

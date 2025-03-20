@@ -9,9 +9,9 @@ from src.memory import SimpleMemory
 from src.utils.ui_helper import StreamlitUI
 
 class AgentWorkflow:
-    def __init__(self):
+    def __init__(self, memory=None):
         self.llm = LLMFactory.create_llm()
-        self.memory = SimpleMemory()
+        self.memory = memory if memory is not None else SimpleMemory()
         self.tools = ToolFactory.get_tools()
         self.ui = StreamlitUI()
     
