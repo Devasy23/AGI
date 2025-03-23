@@ -12,10 +12,10 @@ class StreamlitUI:
             st.session_state.current_step = None
         if 'env_vars' not in st.session_state:
             st.session_state.env_vars = Config.get_all()
-        if 'progress_expander' not in st.session_state:
-            st.session_state.progress_expander = None
         if 'progress_updates' not in st.session_state:
             st.session_state.progress_updates = []
+        if 'show_progress' not in st.session_state:
+            st.session_state.show_progress = True
 
     @staticmethod
     def setup_sidebar():
@@ -37,6 +37,13 @@ class StreamlitUI:
     @staticmethod
     def show_chat_messages():
         """Display all chat messages"""
+        # Show progress expander if needed
+        if st.session_state.show_progress and st.session_state.progress_updates:
+            with st.expander("Processing Steps", expanded=True):
+                for update in st.session_state.progress_updates:
+                    st.markdown(f"**{update['role']}**: {update['content']}")
+
+        # Show chat messages
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.write(message["content"])
@@ -45,22 +52,21 @@ class StreamlitUI:
     def add_chat_message(role: str, content: str, is_progress: bool = False):
         """Add a new message to chat history"""
         if is_progress:
-            # Show progress updates in expander
-            if not st.session_state.progress_expander:
-                st.session_state.progress_expander = st.expander("Processing Steps", expanded=True)
-            with st.session_state.progress_expander:
-                st.markdown(f"**{role}**: {content}")
+            # Store progress update
+            st.session_state.progress_updates.append({"role": role, "content": content})
         else:
-            # Add to chat history and display
+            # Add to chat history
             message = {"role": role, "content": content}
             st.session_state.messages.append(message)
             with st.chat_message(role):
                 st.markdown(content)
             
-            # Clear progress if this was a final answer
+            # Clear progress updates if this was a final answer
             if content.startswith("Final Answer:"):
-                if st.session_state.progress_expander:
-                    st.session_state.progress_expander = None
+                st.session_state.progress_updates = []
+                st.session_state.show_progress = False
+            else:
+                st.session_state.show_progress = True
 
     @staticmethod
     def setup_memory_config_ui():
