@@ -7,7 +7,7 @@ from memory import SimpleMemory
 # Initialize UI and environment
 ui = StreamlitUI()
 ui.initialize_session_state()
-current_step_container = ui.setup_sidebar()
+ui.setup_sidebar()
 
 # Setup environment configuration UI
 EnvConfig.setup_env_ui()
@@ -62,7 +62,3 @@ if question := st.chat_input("Ask your question"):
     except Exception as e:
         st.error(f"An error occurred: {str(e)}")
         raise e
-
-# Update current step display
-if st.session_state.current_step:
-    current_step_container.info(st.session_state.current_step)

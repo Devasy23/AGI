@@ -10,8 +10,6 @@ class StreamlitUI:
             st.session_state.messages = []
         if 'current_step' not in st.session_state:
             st.session_state.current_step = None
-        if 'human_choice' not in st.session_state:
-            st.session_state.human_choice = None
         if 'env_vars' not in st.session_state:
             st.session_state.env_vars = Config.get_all()
         if 'progress_expander' not in st.session_state:
@@ -22,13 +20,10 @@ class StreamlitUI:
     @staticmethod
     def setup_sidebar():
         """Setup the sidebar with current step indicator and configuration options"""
-        st.sidebar.markdown("### Current Step")
-        step_container = st.sidebar.empty()
         
         # Add memory configuration UI
         StreamlitUI.setup_memory_config_ui()
         
-        return step_container
 
     @staticmethod
     def update_current_step(step: str, container: Optional[Any] = None):
