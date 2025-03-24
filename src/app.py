@@ -30,11 +30,15 @@ if question := st.chat_input("Ask your question"):
     # Add user message to chat
     ui.add_chat_message("user", question)
     
+    # Get GitHub repository URLs and user skills
+    repo_urls = st.text_area("Enter GitHub repository URLs (comma-separated):")
+    user_skills = st.text_area("Enter your skills (comma-separated):")
+    
     # Run the workflow
     try:
         with st.spinner('Processing...'):
             # Run the async workflow
-            result = asyncio.run(workflow.run(question))
+            result = asyncio.run(workflow.run(question, repo_urls.split(','), user_skills.split(',')))
             
             # Add final answer to chat
             ui.add_chat_message("assistant", result)

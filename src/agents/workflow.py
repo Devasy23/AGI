@@ -7,6 +7,7 @@ from src.llm.llm_factory import LLMFactory
 from src.tools import ToolFactory
 from src.memory import SimpleMemory
 from src.utils.ui_helper import StreamlitUI
+from src.tools.search_tools import GitHubIssuesTool
 
 class AgentWorkflow:
     def __init__(self):

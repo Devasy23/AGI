@@ -5,6 +5,7 @@ from src.tools import ToolFactory
 from src.memory import SimpleMemory
 from src.utils.ui_helper import StreamlitUI
 from .models import AgentRes, State
+from src.tools.search_tools import GitHubIssuesTool
 
 class CrewWorkflow:
     def __init__(self):
@@ -18,6 +19,7 @@ class CrewWorkflow:
         browser_tool = self.tools["tool_browser"].to_langchain_tool()
         wiki_tool = self.tools["tool_wikipedia"].to_langchain_tool()
         answer_tool = self.tools["final_answer"].to_langchain_tool()
+        github_issues_tool = self.tools["tool_github_issues"].to_langchain_tool()
 
         # Research Agent (Agent1 in original workflow)
         researcher = Agent(
@@ -25,7 +27,7 @@ class CrewWorkflow:
             goal="Find relevant information from web sources",
             backstory="You are an expert researcher with access to web search tools.",
             llm=self.crew_llm,
-            tools=[browser_tool],
+            tools=[browser_tool, github_issues_tool],
             verbose=True
         )
 
@@ -49,9 +51,19 @@ class CrewWorkflow:
             verbose=True
         )
 
-        return researcher, analyst, synthesizer
+        # Manager Agent
+        manager = Agent(
+            name="Manager",
+            goal="Oversee task assignment and issue analysis",
+            backstory="You are an expert manager who oversees the task assignment and issue analysis.",
+            llm=self.crew_llm,
+            tools=[],
+            verbose=True
+        )
 
-    def create_tasks(self, query: str, researcher, analyst, synthesizer):
+        return researcher, analyst, synthesizer, manager
+
+    def create_tasks(self, query: str, researcher, analyst, synthesizer, manager):
         # Add progress update for task creation
         self.ui.add_chat_message("system", "Creating research tasks...", is_progress=True)
         
@@ -78,18 +90,25 @@ class CrewWorkflow:
             dependencies=[analysis_task]
         )
 
-        return [research_task, analysis_task, synthesis_task]
+        github_issues_task = Task(
+            description="Scan GitHub issues",
+            agent=researcher,
+            context="Use GitHub issues tool to scan and filter issues based on user skills.",
+            expected_output="Top 5 GitHub issues compatible with user's skills"
+        )
+
+        return [research_task, analysis_task, synthesis_task, github_issues_task]
 
     async def run(self, query: str):
         # Create agents
-        researcher, analyst, synthesizer = self.create_agents()
+        researcher, analyst, synthesizer, manager = self.create_agents()
         
         # Create tasks
-        tasks = self.create_tasks(query, researcher, analyst, synthesizer)
+        tasks = self.create_tasks(query, researcher, analyst, synthesizer, manager)
         
         # Create crew
         crew = Crew(
-            agents=[researcher, analyst, synthesizer],
+            agents=[researcher, analyst, synthesizer, manager],
             tasks=tasks,
             process=Process.sequential,
             verbose=True
