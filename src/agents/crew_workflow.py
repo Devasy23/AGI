@@ -14,10 +14,10 @@ class CrewWorkflow:
         self.ui = StreamlitUI()
 
     def create_agents(self):
-        # Convert our tools to CrewAI format
-        browser_tool = self.tools["tool_browser"].to_langchain_tool()
-        wiki_tool = self.tools["tool_wikipedia"].to_langchain_tool()
-        answer_tool = self.tools["final_answer"].to_langchain_tool()
+        # Get tools directly since they are now LangChain tools
+        browser_tool = self.tools["tool_browser"]
+        wiki_tool = self.tools["tool_wikipedia"]
+        answer_tool = self.tools["final_answer"]
 
         # Research Agent (Agent1 in original workflow)
         researcher = Agent(

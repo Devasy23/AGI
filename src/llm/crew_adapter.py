@@ -6,13 +6,16 @@ from langchain.schema.messages import (
     HumanMessage,
     SystemMessage
 )
+from pydantic import Field
 from .llm_interface import LLMInterface
 
 class CrewLLMAdapter(BaseChatModel):
     """Adapter to make our LLM interface work with CrewAI"""
     
+    llm: LLMInterface = Field(description="The underlying LLM implementation")
+    
     def __init__(self, llm: LLMInterface):
-        super().__init__()
+        super().__init__(llm=llm)
         self.llm = llm
         
     def _convert_to_chat_messages(self, messages: List[BaseMessage]) -> List[Dict[str, str]]:
