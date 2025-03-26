@@ -3,14 +3,14 @@ from typing import Dict, List, Any
 from langgraph.graph import StateGraph, END
 
 from .models import AgentRes, State
-from src.llm.llm_factory import LLMFactory
+from src.llm.crew_llm import create_llm
 from src.tools import ToolFactory
 from src.memory import SimpleMemory
 from src.utils.ui_helper import StreamlitUI
 
 class AgentWorkflow:
     def __init__(self, memory=None):
-        self.llm = LLMFactory.create_llm()
+        self.llm = create_llm()
         self.memory = memory if memory is not None else SimpleMemory()
         self.tools = ToolFactory.get_tools()
         self.ui = StreamlitUI()

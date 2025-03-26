@@ -1,7 +1,8 @@
 import streamlit as st
-from agents.workflow import AgentWorkflow
-from agents.models import State
-from utils import StreamlitUI, EnvConfig
+from agents.crew_workflow import CrewWorkflow
+from agents.models import AgentRes
+from utils.ui_helper import StreamlitUI
+from utils.env_config import EnvConfig
 from memory import SimpleMemory
 
 # Initialize UI and environment
@@ -20,11 +21,11 @@ if 'memory' not in st.session_state:
 
 # Create main UI
 st.title("Multi-Agent Search Assistant")
-st.write("Ask a question and the agents will search for information using multiple sources.")
+st.write("Ask a question and our crew of AI agents will work together to find the answer.")
 
 # Initialize workflow with existing memory
 try:
-    workflow = AgentWorkflow(memory=st.session_state.memory)
+    workflow = CrewWorkflow(memory=st.session_state.memory)
 except ValueError as e:
     st.error(f"Configuration error: {str(e)}")
     st.stop()
@@ -37,28 +38,26 @@ if question := st.chat_input("Ask your question"):
     # Add user message to chat
     ui.add_chat_message("user", question)
     
-    # Create initial state
-    initial_state = {
-        'user_q': question,
-        'chat_history': [],
-        'lst_res': [],
-        'output': {}
-    }
-    
-    # Run the workflow
     try:
-        with st.spinner('Processing...'):
-            graph = workflow.create_graph()
-            result = graph.invoke(initial_state)
-            
-            # Handle final answer
-            if 'output' in result and hasattr(result['output'], 'tool_output'):
-                final_answer = result['output'].tool_output
-                ui.add_chat_message("assistant", final_answer)
-            
-            # Save memory state
-            st.session_state.memory.save_state()
-                
+        # Process the query using CrewAI workflow
+        result = workflow.process_query(
+            query=question,
+            chat_history=st.session_state.messages,
+            lst_res=st.session_state.get('lst_res', [])
+        )
+        
+        # Update chat with the result
+        ui.add_chat_message("assistant", result)
+        
+        # Save new agent result
+        if 'lst_res' not in st.session_state:
+            st.session_state.lst_res = []
+        st.session_state.lst_res.append(AgentRes(
+            tool_name="final_answer",
+            tool_input={"text": result},
+            tool_output=result
+        ))
+        
     except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
-        raise e
+        st.error(f"Error processing query: {str(e)}")
+        ui.add_chat_message("assistant", "I apologize, but I encountered an error while processing your request.")

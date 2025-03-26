@@ -1,4 +1,3 @@
-from .llm_interface import LLMInterface
-from .ollama_llm import OllamaLLM
+from .crew_llm import create_llm
 
-__all__ = ['LLMInterface', 'OllamaLLM']
+__all__ = ['create_llm']
