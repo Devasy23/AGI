@@ -1,13 +1,12 @@
 from typing import Dict, Type
 from .base_tool import BaseTool
-from .search_tools import BrowserSearchTool, WikipediaSearchTool, FinalAnswerTool, MCPTool
+from .search_tools import BrowserSearchTool, WikipediaSearchTool, FinalAnswerTool
 
 class ToolFactory:
     _tools: Dict[str, Type[BaseTool]] = {
         "tool_browser": BrowserSearchTool,
         "tool_wikipedia": WikipediaSearchTool,
-        "final_answer": FinalAnswerTool,
-        "tool_mcp": MCPTool
+        "final_answer": FinalAnswerTool
     }
     
     @classmethod
@@ -20,4 +19,4 @@ class ToolFactory:
         """Register a new tool"""
         cls._tools[name] = tool_cls
 
-__all__ = ['BaseTool', 'BrowserSearchTool', 'WikipediaSearchTool', 'FinalAnswerTool', 'MCPTool', 'ToolFactory']
+__all__ = ['BaseTool', 'BrowserSearchTool', 'WikipediaSearchTool', 'FinalAnswerTool', 'ToolFactory']

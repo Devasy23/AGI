@@ -3,7 +3,6 @@ from langchain_community.utilities import WikipediaAPIWrapper
 from langchain.tools.base import ToolException
 from typing import Optional, Any, List
 from pydantic import Field
-from src.llm.mcp_client import MCPClient
 
 class BrowserSearchTool(BaseTool):
     name: str = Field(default="tool_browser")
@@ -42,36 +41,3 @@ class FinalAnswerTool(BaseTool):
 
     async def _arun(self, text: str) -> str:
         return self._run(text)
-
-class MCPTool(BaseTool):
-    name: str = Field(default="tool_mcp")
-    description: str = Field(default="Interact with Model Context Protocol (MCP) server to fetch or update context")
-    
-    def __init__(self) -> None:
-        super().__init__()
-        self.client = MCPClient()
-    
-    def _run(self, action: str, data: Optional[dict] = None) -> str:
-        if action == "fetch":
-            return self._fetch_context(data)
-        elif action == "update":
-            return self._update_context(data)
-        else:
-            raise ToolException(f"Unsupported action: {action}")
-
-    async def _arun(self, action: str, data: Optional[dict] = None) -> str:
-        return self._run(action, data)
-
-    def _fetch_context(self, query_data: dict) -> str:
-        try:
-            result = self.client.fetch_context(query_data)
-            return str(result)
-        except Exception as e:
-            raise ToolException(f"Error fetching context: {str(e)}")
-
-    def _update_context(self, context_data: dict) -> str:
-        try:
-            result = self.client.update_context(context_data)
-            return str(result)
-        except Exception as e:
-            raise ToolException(f"Error updating context: {str(e)}")

@@ -1,6 +1,5 @@
 from .llm_config import LLMConfig
 from .memory_config import MemoryConfig
-from .mcp_config import MCPConfig
 
 class Config:
     @staticmethod
@@ -8,8 +7,7 @@ class Config:
         """Get all configuration settings"""
         return {
             "llm": LLMConfig.get_config(),
-            "memory": MemoryConfig.get_config(),
-            "mcp": MCPConfig.get_config()
+            "memory": MemoryConfig.get_config()
         }
     
     @staticmethod
@@ -17,6 +15,5 @@ class Config:
         """Validate all configurations"""
         # Will raise ValueError if validation fails
         MemoryConfig.validate_config()
-        MCPConfig.validate_config()
 
-__all__ = ['LLMConfig', 'MemoryConfig', 'MCPConfig', 'Config']
+__all__ = ['LLMConfig', 'MemoryConfig', 'Config']

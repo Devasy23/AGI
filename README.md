@@ -14,7 +14,6 @@ A flexible and modular framework for building AI agents with different LLM provi
 ## Features
 
 - **Multiple LLM Providers**: Support for Ollama, Groq, and Gemini
-- **Model Context Protocol (MCP)**: Integration with MCP server for context management
 - **Configurable Memory Systems**: Choose between Chroma, Qdrant, or FAISS vector stores
 - **Various Embedding Models**: Options for sentence-transformers, OpenAI, and Hugging Face
 - **Tool Integrations**: Built-in search tools with extensible architecture
@@ -50,9 +49,6 @@ A flexible and modular framework for building AI agents with different LLM provi
    
    # For FAISS
    pip install -r requirements-faiss.txt
-   
-   # For MCP integration
-   pip install -r requirements-mcp.txt
    ```
 
 5. **Set up environment variables**:
@@ -81,8 +77,6 @@ The framework uses the following environment variables (which can also be config
 | QDRANT_API_KEY | API key for Qdrant | - |
 | OPENAI_API_KEY | API key for OpenAI embeddings | - |
 | HF_API_KEY | API key for HuggingFace embeddings | - |
-| MCP_SERVER_URL | URL for the MCP server | http://localhost:8000 |
-| MCP_API_KEY | API key for MCP authentication | - |
 
 ### UI Configuration
 
