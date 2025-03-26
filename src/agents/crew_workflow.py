@@ -1,5 +1,6 @@
 from typing import Dict, List, Any
 from crewai import Agent, Task, Crew, Process
+from langchain.tools import BaseTool
 from src.llm.llm_factory import LLMFactory
 from src.tools import ToolFactory
 from src.memory import SimpleMemory
@@ -13,15 +14,24 @@ class CrewWorkflow:
         self.tools = ToolFactory.get_tools()
         self.ui = StreamlitUI()
 
+    def _convert_tool(self, tool: BaseTool) -> dict:
+        """Convert a tool to a format that CrewAI can understand."""
+        return {
+            "name": tool.name,
+            "description": tool.description,
+            "schema": tool.args_schema.schema() if hasattr(tool, 'args_schema') else {},
+            "func": tool._run
+        }
+
     def create_agents(self):
-        # Get tools directly since they are now LangChain tools
-        browser_tool = self.tools["tool_browser"]
-        wiki_tool = self.tools["tool_wikipedia"]
-        answer_tool = self.tools["final_answer"]
+        # Get tools and convert them to CrewAI-compatible format
+        browser_tool = self._convert_tool(self.tools["tool_browser"])
+        wiki_tool = self._convert_tool(self.tools["tool_wikipedia"])
+        answer_tool = self._convert_tool(self.tools["final_answer"])
 
         # Research Agent (Agent1 in original workflow)
         researcher = Agent(
-            name="Researcher",
+            role="Researcher",
             goal="Find relevant information from web sources",
             backstory="You are an expert researcher with access to web search tools.",
             llm=self.crew_llm,
@@ -31,7 +41,7 @@ class CrewWorkflow:
 
         # Analyst Agent (Agent2 in original workflow)
         analyst = Agent(
-            name="Analyst",
+            role="Analyst",
             goal="Enrich and verify information using Wikipedia",
             backstory="You are an expert analyst who verifies and enriches information.",
             llm=self.crew_llm,
@@ -41,7 +51,7 @@ class CrewWorkflow:
 
         # Synthesizer Agent (final_answer handler)
         synthesizer = Agent(
-            name="Synthesizer",
+            role="Synthesizer",
             goal="Synthesize information into clear, complete answers",
             backstory="You are an expert at combining information into clear answers.",
             llm=self.crew_llm,
