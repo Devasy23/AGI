@@ -1,224 +1,257 @@
 # AI Agent Framework
 
-A flexible and modular framework for building AI agents with different LLM providers, memory systems, and tool integrations.
+A powerful multi-agent system for building, orchestrating, and leveraging AI agents across various domains. The current implementation features a search assistant powered by multiple specialized AI agents working together.
 
 ## Table of Contents
-- [Features](#features)
-- [Installation](#installation)
+
+- [Overview](#overview)
+- [Current Implementation: Multi-Agent Search Assistant](#current-implementation-multi-agent-search-assistant)
+  - [Architecture](#architecture)
+  - [Workflow](#workflow)
+  - [Diagrams](#diagrams)
+- [Modules](#modules)
+  - [UI Component](#1-ui-component-utilsui_helperpy)
+  - [Agent System](#2-agent-system)
+  - [LLM Integration](#3-llm-integration)
+  - [Tools System](#4-tools-system)
 - [Configuration](#configuration)
-- [Usage](#usage)
-- [Architecture](#architecture)
-- [Extending the Framework](#extending-the-framework)
-- [Development Guidelines](#development-guidelines)
+- [Roadmap](#roadmap)
+  - [GitHub Integration](#1-github-integration)
+  - [Web & Content Integration](#2-web--content-integration)
+  - [Code Execution & Data Exploration](#3-code-execution--data-exploration)
+  - [Additional Integrations](#4-additional-integrations)
+- [Setup and Installation](#setup-and-installation)
+- [Requirements](#requirements)
+- [Technical Details](#technical-details)
 
-## Features
+## Overview
 
-- **Multiple LLM Providers**: Support for Ollama, Groq, and Gemini
-- **Configurable Memory Systems**: Choose between Chroma, Qdrant, or FAISS vector stores
-- **Various Embedding Models**: Options for sentence-transformers, OpenAI, and Hugging Face
-- **Tool Integrations**: Built-in search tools with extensible architecture
-- **Interactive UI**: Streamlit-based interface for easy interaction and configuration
-- **Agent Workflows**: Structured agent workflows with tool execution capabilities
+The AI Agent Framework is designed to be a comprehensive platform for building, managing, and leveraging AI agents across various domains including development, health, finance, and more. The framework enables the creation of specialized agents that can work independently or collaboratively to solve complex problems.
 
-## Installation
+This repository represents the initial implementation of what will become a much broader system with capabilities spanning from code analysis and GitHub integration to data visualization and specialized tool integration.
 
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd <repository-directory>
-   ```
+## Current Implementation: Multi-Agent Search Assistant
 
-2. **Create a virtual environment**:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+The first implementation in this framework is a Multi-Agent Search Assistant that leverages multiple specialized AI agents to process search queries more effectively than a single agent could. The system uses CrewAI for agent coordination and orchestration, coupled with a variety of tools for web search, document retrieval, and data analysis.
 
-3. **Install core dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Architecture
 
-4. **Install vector store specific dependencies** (choose one based on your needs):
-   ```bash
-   # For Chroma (default)
-   pip install -r requirements-chroma.txt
-   
-   # For Qdrant
-   pip install -r requirements-qdrant.txt
-   
-   # For FAISS
-   pip install -r requirements-faiss.txt
-   ```
+The application follows a modular architecture with several key components:
 
-5. **Set up environment variables**:
-   ```bash
-   cp .env.example .env
-   ```
-   Edit the `.env` file with your API keys and configuration.
+#### Core Components
+
+1. **UI Layer (Streamlit)**: Handles user interaction, displays chat messages, and provides configuration options.
+2. **Agent Layer (CrewAI)**: Coordinates multiple specialized agents to process queries effectively.
+3. **LLM Integration**: Supports multiple LLM providers (Gemini, Ollama, Groq) with a unified interface.
+4. **Tools System**: Provides agents with capabilities like web search, file reading, and knowledge retrieval.
+
+### Workflow
+
+When a user submits a query:
+
+1. The query is passed to a crew of agents (Researcher, File Expert, Synthesizer)
+2. Each agent processes the query using its specialized capabilities
+3. The synthesizer agent combines results into a comprehensive answer
+4. The answer is displayed to the user in the chat interface
+
+### Diagrams
+
+#### System Architecture
+
+![System Architecture](assets/system_architecture.png)
+<details>
+<summary>System Architecture</summary>
+
+```plantuml
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+skinparam componentStyle rectangle
+
+package "UI Layer" {
+  [Streamlit UI] as UI
+  [UI Helper] as UIHelper
+  [Environment Config] as EnvConfig
+}
+
+package "Agent Layer" {
+  [CrewWorkflow] as Crew
+  [AgentWorkflow] as AgentWF
+  [CrewAgents] as Agents
+}
+
+package "LLM Integration" {
+  [LLM Config] as LLMConfig
+  [Crew LLM] as CrewLLM
+  
+  package "Provider Implementations" {
+    [Gemini LLM]
+    [Groq LLM]
+    [Ollama LLM]
+  }
+}
+
+package "Tools" {
+  [Tool Factory] as ToolFactory
+  [Crew Tools] as CrewTools
+}
+
+UI --> UIHelper
+UI --> EnvConfig
+UI --> Crew
+UI --> AgentWF
+
+Crew --> Agents
+Crew --> CrewLLM
+Crew --> CrewTools
+
+AgentWF --> ToolFactory
+AgentWF --> CrewLLM
+
+CrewLLM --> LLMConfig
+CrewLLM --> [Gemini LLM]
+CrewLLM --> [Groq LLM]
+CrewLLM --> [Ollama LLM]
+
+@enduml
+```
+
+</details>
+
+#### Agent Interaction Flow
+
+![Agent Interaction Flow](assets\agent_interaction_flow.png)
+<details>
+<summary>Agent Interaction Flow Diagram</summary>
+
+
+```plantuml
+@startuml
+!theme plain
+skinparam backgroundColor transparent
+
+actor User
+participant "Streamlit UI" as UI
+participant "CrewWorkflow" as Crew
+participant "Researcher" as R
+participant "File Expert" as F
+participant "Synthesizer" as S
+
+User -> UI: Submit query
+UI -> Crew: process_query(query)
+Crew -> R: Execute research task
+R --> Crew: Return research findings
+Crew -> F: Execute file analysis task\n(with research context)
+F --> Crew: Return file analysis results
+Crew -> S: Execute synthesis task\n(with research & file analysis context)
+S --> Crew: Return synthesized answer
+Crew --> UI: Return final result
+UI --> User: Display answer
+
+@enduml
+```
+
+</details>
+
+## Modules
+
+### 1. UI Component (`utils/ui_helper.py`)
+- Handles chat message display and user interaction
+- Manages session state for consistent user experience
+- Provides configuration UI for LLM providers and settings
+
+### 2. Agent System
+- **CrewWorkflow** (`agents/crew_workflow.py`): Orchestrates the CrewAI-based multi-agent system
+- **AgentWorkflow** (`agents/workflow.py`): Alternative workflow using LangGraph for agent orchestration
+- **CrewAgents** (`agents/crew_agents.py`): Defines specialized agents with different roles and capabilities
+
+### 3. LLM Integration
+- **LLM Config** (`config/llm_config.py`): Manages LLM provider configuration
+- **Crew LLM** (`llm/crew_llm.py`): Creates LLM instances for CrewAI
+- Provider-specific implementations for Gemini, Groq, and Ollama
+
+### 4. Tools System
+- **ToolFactory** (`tools/__init__.py`): Creates and manages tool instances
+- **CrewTools** (`tools/crew_tools.py`): Defines tools available to agents
 
 ## Configuration
 
-### Environment Variables
+The application supports multiple LLM providers:
 
-The framework uses the following environment variables (which can also be configured through the UI):
+1. **Ollama**: Local LLM running on `http://localhost:11434`
+2. **Gemini**: Google's Gemini models via API
+3. **Groq**: Fast inference API for various open models
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| LLM_PROVIDER | LLM provider (ollama, groq, gemini) | ollama |
-| LLM_MODEL | Model name for the selected provider | gemma3:4b |
-| GROQ_API_KEY | API key for Groq | - |
-| GEMINI_API_KEY | API key for Google Gemini | - |
-| VECTOR_STORE | Vector store type (chroma, qdrant, faiss) | chroma |
-| EMBEDDING_MODEL | Embedding model type (sentence-transformers, openai, huggingface) | sentence-transformers |
-| EMBEDDING_MODEL_NAME | Name of the embedding model | all-MiniLM-L6-v2 |
-| CHROMA_PERSIST_DIR | Directory for Chroma database | ./chroma_db |
-| QDRANT_URL | URL for Qdrant server | - |
-| QDRANT_API_KEY | API key for Qdrant | - |
-| OPENAI_API_KEY | API key for OpenAI embeddings | - |
-| HF_API_KEY | API key for HuggingFace embeddings | - |
+Configuration is managed through:
+- Environment variables (.env file)
+- UI-based configuration (settings saved in session state)
 
-### UI Configuration
+## Roadmap
 
-The application provides a user-friendly interface to configure:
-- LLM provider and model
-- Vector store settings
-- Embedding model selection
-- API keys and other provider-specific settings
+This AI Agent Framework is designed to grow into a comprehensive platform with capabilities spanning multiple domains. Here's the planned roadmap:
 
-## Usage
+### 1. GitHub Integration
 
-1. **Start the Streamlit application**:
-   
-   There are multiple ways to run the app while maintaining correct imports:
+- **Repository Management**:
+  - Search Repositories: Query GitHub to find repositories based on keywords, topics, or user/organization
+  - Access Notifications: Retrieve and manage GitHub notifications
+  - Issue Analysis: Scan repositories to summarize and categorize issues
+  - Fork & Commit: Create forks and commit changes programmatically
+  - Pull Request Status: Check and report on pull request status
 
-   ```bash
-   # Option 1: Using the -m flag (recommended for proper imports)
-   streamlit run -m src.app
+### 2. Web & Content Integration
 
-   # Option 2: From the project root, specify the full path
+- **Web Search & Parsing**:
+  - General Web Search: Perform web searches using integrated NewsAPI
+  - Medium Blog Integration: Search and parse Medium blogs, including premium content
+  - Dynamic RAG Memory: Extend the assistant's RAG memory with extra context based on search results
+
+- **Documentation Summaries**:
+  - Medium Blogs: Generate concise summaries of blog posts
+  - GitHub READMEs: Summarize key sections of repository documentation
+
+### 3. Code Execution & Data Exploration
+
+- **Coding Capabilities**:
+  - Code Writing & Execution: Write, execute, and debug code snippets across languages
+  - SQL Query Generation: Create and execute SQL queries from natural language
+  - Data Visualization: Generate visualizations from data with RAG support
+
+### 4. Additional Integrations
+
+- **Spotify Integration**:
+  - Access and manage user Spotify playlists
+  - Provide playlist analysis and recommendations
+
+- **CodeForces Integration**:
+  - Run complex queries to analyze contest performances
+  - Explain solutions and provide problem-solving insights
+
+## Setup and Installation
+
+1. Clone the repository
+2. Install requirements:
+   ```
+   pip install -r requirements.txt
+   ```
+3. Configure your .env file with API keys
+4. Run the application:
+   ```
    streamlit run src/app.py
-
-   # Option 3: Setting PYTHONPATH before running
-   # On Windows
-   set PYTHONPATH=C:\Users\Devasy\OneDrive\Desktop\AGI
-   streamlit run src/app.py
-   
-   # On Linux/macOS
-   export PYTHONPATH=/path/to/AGI
-   streamlit run src/app.py
    ```
 
-2. **Configure your environment** using the sidebar controls.
+## Requirements
 
-3. **Interact with the agent** by sending messages and questions.
+- Python 3.9+
+- Streamlit
+- CrewAI
+- LangGraph (for alternative workflow)
+- API keys for selected LLM providers
 
-4. **Explore the notebooks** for examples of how to use the framework programmatically.
+## Technical Details
 
-## Architecture
-
-The framework follows a modular architecture:
-
-### Core Components
-
-- **LLM Providers** ([src/llm/](src/llm/)): Implementations for different LLM services
-  - [llm_interface.py](src/llm/llm_interface.py): Base interface
-  - [ollama_llm.py](src/llm/ollama_llm.py): Ollama implementation
-  - [groq_llm.py](src/llm/groq_llm.py): Groq implementation
-  - [gemini_llm.py](src/llm/gemini_llm.py): Google Gemini implementation
-  - [llm_factory.py](src/llm/llm_factory.py): Factory to create appropriate LLM instance
-
-- **Memory Systems** ([src/memory/](src/memory/)): Vector store implementations
-  - [memory_interface.py](src/memory/memory_interface.py): Base interface
-  - [simple_memory.py](src/memory/simple_memory.py): Simple implementation
-
-- **Tools** ([src/tools/](src/tools/)): Tool implementations
-  - [base_tool.py](src/tools/base_tool.py): Base tool class
-  - [search_tools.py](src/tools/search_tools.py): Search implementations
-
-- **Agents** ([src/agents/](src/agents/)): Agent implementations
-  - [models.py](src/agents/models.py): Data models for agents
-  - [workflow.py](src/agents/workflow.py): Agent workflow definitions
-
-- **Configuration** ([src/config/](src/config/)): Configuration management
-  - [llm_config.py](src/config/llm_config.py): LLM configuration
-  - [memory_config.py](src/config/memory_config.py): Memory configuration
-
-- **Utils** ([src/utils/](src/utils/)): Utility functions
-  - [ui_helper.py](src/utils/ui_helper.py): UI components and helpers
-  - [env_config.py](src/utils/env_config.py): Environment configuration
-
-## Extending the Framework
-
-### Adding a New LLM Provider
-
-1. Create a new file in [src/llm/](src/llm/) (e.g., `new_provider_llm.py`)
-2. Implement the LLM interface defined in [llm_interface.py](src/llm/llm_interface.py)
-3. Update the [llm_factory.py](src/llm/llm_factory.py) to include your new provider
-4. Update the UI options in [env_config.py](src/utils/env_config.py)
-
-### Adding a New Tool
-
-1. Create a new file in [src/tools/](src/tools/) or extend an existing file
-2. Inherit from the base tool class in [base_tool.py](src/tools/base_tool.py)
-3. Implement the required methods
-4. Register the tool in your agent workflow
-
-### Adding a New Vector Store
-
-1. Add required dependencies to a new requirements file (e.g., `requirements-new-store.txt`)
-2. Create a new implementation in [src/memory/](src/memory/)
-3. Update the [memory_config.py](src/config/memory_config.py) to include your new option
-4. Update the UI options in [ui_helper.py](src/utils/ui_helper.py)
-
-## Development Guidelines
-
-1. **Follow the existing architecture**: Maintain separation of concerns between components.
-
-2. **Use interfaces**: Implement the appropriate interfaces when adding new features.
-
-3. **Testing**: Add tests for new functionality.
-
-4. **Environment Variables**: Update `.env.example` when adding new configuration options.
-
-5. **Documentation**: Document new features in code comments and update the README as needed.
-
-6. **Dependencies**: Keep dependencies separated by functionality in the requirements files.
-
-7. **Use Pydantic Models**: Follow the pattern of using Pydantic models for structured data.
-
-8. **Error Handling**: Implement proper error handling and provide informative error messages.
-
-## Troubleshooting
-
-### Import Errors
-
-If you encounter errors like `ImportError: attempted relative import beyond top-level package`, try one of these solutions:
-
-1. **Run the application as a module**:
-   ```bash
-   python -m src.app
-   ```
-   
-2. **Use absolute imports** in your code instead of relative imports:
-   ```python
-   # Instead of: from ..llm.llm_factory import LLMFactory
-   from src.llm.llm_factory import LLMFactory
-   ```
-
-3. **Set the PYTHONPATH** environment variable before running the app:
-   ```bash
-   # On Windows
-   set PYTHONPATH=C:\Users\Devasy\OneDrive\Desktop\AGI
-   
-   # On Linux/macOS
-   export PYTHONPATH=/path/to/AGI
-   ```
-
-## License
-
-[Add your license information here]
-
----
-
-For questions or support, please [open an issue](link-to-issues) or contact [your contact information].
+The application leverages:
+- **CrewAI** for agent orchestration
+- **Streamlit** for the web interface
+- **Pydantic** for data validation
+- **LangGraph** for workflow management (alternative implementation)
