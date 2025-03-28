@@ -3,7 +3,6 @@ from agents.crew_workflow import CrewWorkflow
 from agents.models import AgentRes
 from utils.ui_helper import StreamlitUI
 from utils.env_config import EnvConfig
-from memory import SimpleMemory
 
 # Initialize UI and environment
 ui = StreamlitUI()
@@ -13,19 +12,13 @@ ui.setup_sidebar()
 # Setup environment configuration UI
 EnvConfig.setup_env_ui()
 
-# Initialize persistent memory in session state
-if 'memory' not in st.session_state:
-    st.session_state.memory = SimpleMemory()
-    # Try to load previous state
-    st.session_state.memory.load_state()
-
 # Create main UI
 st.title("Multi-Agent Search Assistant")
 st.write("Ask a question and our crew of AI agents will work together to find the answer.")
 
-# Initialize workflow with existing memory
+# Initialize workflow without memory dependency
 try:
-    workflow = CrewWorkflow(memory=st.session_state.memory)
+    workflow = CrewWorkflow()
 except ValueError as e:
     st.error(f"Configuration error: {str(e)}")
     st.stop()

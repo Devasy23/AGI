@@ -1,20 +1,27 @@
-from typing import Literal
+from typing import Literal, Optional
 import os
 from dotenv import load_dotenv
 
 class MemoryConfig:
-    vector_store: Literal["chroma", "qdrant", "faiss"] = os.getenv("VECTOR_STORE", "chroma")
-    embedding_model: Literal["sentence-transformers", "openai", "huggingface"] = os.getenv("EMBEDDING_MODEL", "sentence-transformers")
-    embedding_model_name: str = os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
+    @staticmethod
+    def clean_env_value(value: str) -> str:
+        """Clean environment variable value by removing comments and whitespace"""
+        if value:
+            return value.split('#')[0].strip()
+        return value or ""
+
+    vector_store: Optional[Literal["chroma", "qdrant", "faiss"]] = clean_env_value(os.getenv("VECTOR_STORE", ""))
+    embedding_model: Literal["sentence-transformers", "openai", "huggingface"] = clean_env_value(os.getenv("EMBEDDING_MODEL", "sentence-transformers"))
+    embedding_model_name: str = clean_env_value(os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2"))
     
     # Vector store specific settings
-    chroma_persist_dir: str = os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
-    qdrant_url: str = os.getenv("QDRANT_URL", "")
-    qdrant_api_key: str = os.getenv("QDRANT_API_KEY", "")
+    chroma_persist_dir: str = clean_env_value(os.getenv("CHROMA_PERSIST_DIR", "./chroma_db"))
+    qdrant_url: str = clean_env_value(os.getenv("QDRANT_URL", ""))
+    qdrant_api_key: str = clean_env_value(os.getenv("QDRANT_API_KEY", ""))
     
     # Embedding API keys
-    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
-    hf_api_key: str = os.getenv("HF_API_KEY", "")
+    openai_api_key: str = clean_env_value(os.getenv("OPENAI_API_KEY", ""))
+    hf_api_key: str = clean_env_value(os.getenv("HF_API_KEY", ""))
     
     @classmethod
     def get_config(cls):
@@ -28,17 +35,20 @@ class MemoryConfig:
             "openai_api_key": cls.openai_api_key,
             "hf_api_key": cls.hf_api_key
         }
-        
+    
     @classmethod
     def validate_config(cls):
         """Validate the memory configuration"""
         config = cls.get_config()
         
-        if config["vector_store"] == "qdrant" and not (config["qdrant_url"] and config["qdrant_api_key"]):
-            raise ValueError("Qdrant URL and API key are required when using Qdrant vector store")
-            
+        # Only validate vector store settings if a vector store is selected
+        if config["vector_store"]:
+            if config["vector_store"] == "qdrant" and not (config["qdrant_url"] and config["qdrant_api_key"]):
+                raise ValueError("Qdrant URL and API key are required when using Qdrant vector store")
+        
+        # Only validate embedding model settings if using API-based models
         if config["embedding_model"] == "openai" and not config["openai_api_key"]:
             raise ValueError("OpenAI API key is required when using OpenAI embeddings")
-            
+        
         if config["embedding_model"] == "huggingface" and not config["hf_api_key"]:
             raise ValueError("HuggingFace API key is required when using HuggingFace embeddings")

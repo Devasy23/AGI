@@ -7,6 +7,10 @@ def create_llm():
     provider = config["provider"]
     model_name = config["model_name"]
     
+    # Clean up provider string in case it has comments
+    if "#" in provider:
+        provider = provider.split("#")[0].strip()
+    
     if provider == "ollama":
         return LLM(
             model=f"ollama/{model_name}",
@@ -18,14 +22,14 @@ def create_llm():
             api_key=config.get("groq_api_key")
         )
     elif provider == "gemini":
-        vertex_credentials = config.get("vertex_credentials")  # Should be configured in llm_config.py
+        # Use the gemini_api_key directly instead of vertex_credentials
         return LLM(
             model=f"gemini/{model_name}",
             temperature=0.7,
-            vertex_credentials=vertex_credentials
+            api_key=config.get("gemini_api_key")
         )
     else:
-        raise ValueError(f"Unsupported LLM provider: {provider}")
+        raise ValueError(f"Unsupported LLM provider: {provider} # Options: ollama, groq, gemini")
 
 # Export the create_llm function as the main interface
 __all__ = ['create_llm']
