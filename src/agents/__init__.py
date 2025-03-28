@@ -1,4 +1,4 @@
 from .models import AgentRes, State
-from .workflow import AgentWorkflow
+from .crew_workflow import CrewWorkflow
 
-__all__ = ['AgentRes', 'State', 'AgentWorkflow']
+__all__ = ['AgentRes', 'State', 'CrewWorkflow']

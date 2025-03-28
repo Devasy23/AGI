@@ -1,22 +1,11 @@
-from typing import Dict, Type
-from .base_tool import BaseTool
-from .search_tools import BrowserSearchTool, WikipediaSearchTool, FinalAnswerTool
+from .crew_tools import (
+    DuckDuckGoSearchTool,
+    WikipediaSearchTool,
+    get_search_tools
+)
 
-class ToolFactory:
-    _tools: Dict[str, Type[BaseTool]] = {
-        "tool_browser": BrowserSearchTool,
-        "tool_wikipedia": WikipediaSearchTool,
-        "final_answer": FinalAnswerTool
-    }
-    
-    @classmethod
-    def get_tools(cls) -> Dict[str, BaseTool]:
-        """Get instances of all available tools"""
-        return {name: tool_cls() for name, tool_cls in cls._tools.items()}
-    
-    @classmethod
-    def register_tool(cls, name: str, tool_cls: Type[BaseTool]) -> None:
-        """Register a new tool"""
-        cls._tools[name] = tool_cls
-
-__all__ = ['BaseTool', 'BrowserSearchTool', 'WikipediaSearchTool', 'FinalAnswerTool', 'ToolFactory']
+__all__ = [
+    'DuckDuckGoSearchTool',
+    'WikipediaSearchTool',
+    'get_search_tools'
+]

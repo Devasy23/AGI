@@ -10,72 +10,62 @@ class StreamlitUI:
             st.session_state.messages = []
         if 'current_step' not in st.session_state:
             st.session_state.current_step = None
-        if 'human_choice' not in st.session_state:
-            st.session_state.human_choice = None
         if 'env_vars' not in st.session_state:
             st.session_state.env_vars = Config.get_all()
+        if 'progress_updates' not in st.session_state:
+            st.session_state.progress_updates = []
+        if 'show_progress' not in st.session_state:
+            st.session_state.show_progress = True
 
     @staticmethod
     def setup_sidebar():
         """Setup the sidebar with current step indicator and configuration options"""
-        st.sidebar.markdown("### Current Step")
-        step_container = st.sidebar.empty()
-        
-        # Add memory configuration UI
         StreamlitUI.setup_memory_config_ui()
-        
-        return step_container
-
-    @staticmethod
-    def update_current_step(step: str, container: Optional[Any] = None):
-        """Update the current step in session state and UI"""
-        st.session_state.current_step = step
-        if container:
-            container.info(step)
 
     @staticmethod
     def show_chat_messages():
-        """Display all chat messages"""
+        """Display all chat messages from the session state"""
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
-                st.write(message["content"])
-
+                st.markdown(message["content"])
+    
     @staticmethod
-    def add_chat_message(role: str, content: str):
-        """Add a new message to chat history"""
-        st.session_state.messages.append({"role": role, "content": content})
-        with st.chat_message(role):
-            st.write(content)
-
-    @staticmethod
-    def create_human_feedback_buttons():
-        """Create human feedback buttons with proper layout"""
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            yes_clicked = st.button("Yes", key="yes_button")
-            if yes_clicked:
-                st.session_state.human_choice = "Agent2"
-        with col2:
-            no_clicked = st.button("No", key="no_button")
-            if no_clicked:
-                st.session_state.human_choice = "END"
+    def add_chat_message(role: str, content: str, is_progress: bool = False):
+        """Add a message to the chat history and display it
         
-        if st.session_state.human_choice:
-            choice = st.session_state.human_choice
-            st.session_state.human_choice = None
-            return choice
-        return None
+        Args:
+            role: The role of the message sender (user, assistant, system)
+            content: The content of the message
+            is_progress: Whether this is a progress update message
+        """
+        # Add to session state
+        st.session_state.messages.append({"role": role, "content": content})
+        
+        # Display the message
+        if is_progress:
+            if st.session_state.show_progress:
+                st.session_state.progress_updates.append({"role": role, "content": content})
+                with st.expander("Progress Updates", expanded=True):
+                    for update in st.session_state.progress_updates:
+                        with st.chat_message(update["role"]):
+                            st.markdown(update["content"])
+        else:
+            # Display immediately if it's not a progress message
+            with st.chat_message(role):
+                st.markdown(content)
 
     @staticmethod
     def setup_memory_config_ui():
         """Setup UI for memory configuration"""
         with st.sidebar.expander("Memory Settings"):
-            # Vector Store Selection
+            # Vector Store Selection (Optional)
+            current_vector_store = MemoryConfig.vector_store or "none"
             vector_store = st.selectbox(
-                "Vector Store",
-                options=["chroma", "qdrant", "faiss"],
-                index=["chroma", "qdrant", "faiss"].index(MemoryConfig.vector_store)
+                "Vector Store (Optional)",
+                options=["none", "chroma", "qdrant", "faiss"],
+                index=["none", "chroma", "qdrant", "faiss"].index(current_vector_store)
             )
+            vector_store = None if vector_store == "none" else vector_store
             
             # Embedding Model Selection
             embedding_model = st.selectbox(
@@ -103,7 +93,7 @@ class StreamlitUI:
                     type="password"
                 )
             
-            # Vector store specific settings
+            # Vector store specific settings (only show if a vector store is selected)
             if vector_store == "chroma":
                 persist_dir = st.text_input(
                     "Persist Directory",
@@ -126,8 +116,9 @@ class StreamlitUI:
                     if "env_vars" not in st.session_state:
                         st.session_state.env_vars = {}
                     
-                    st.session_state.env_vars.update({
-                        "VECTOR_STORE": vector_store,
+                    # Update environment variables
+                    env_updates = {
+                        "VECTOR_STORE": vector_store if vector_store else "",
                         "EMBEDDING_MODEL": embedding_model,
                         "EMBEDDING_MODEL_NAME": embedding_model_name if embedding_model == "sentence-transformers" else MemoryConfig.embedding_model_name,
                         "OPENAI_API_KEY": openai_key if embedding_model == "openai" else MemoryConfig.openai_api_key,
@@ -135,10 +126,14 @@ class StreamlitUI:
                         "CHROMA_PERSIST_DIR": persist_dir if vector_store == "chroma" else MemoryConfig.chroma_persist_dir,
                         "QDRANT_URL": qdrant_url if vector_store == "qdrant" else MemoryConfig.qdrant_url,
                         "QDRANT_API_KEY": qdrant_key if vector_store == "qdrant" else MemoryConfig.qdrant_api_key
-                    })
-                    
-                    # Validate new configuration
-                    Config.validate_all()
+                    }
+                    for key, value in env_updates.items():
+                        if value:
+                            st.session_state.env_vars[key] = value
+                            st.session_state.env_vars[key] = MemoryConfig.clean_env_value(value)
+                        else:
+                            st.session_state.env_vars.pop(key, None)
                     st.success("Memory settings saved successfully!")
-                except ValueError as e:
-                    st.error(f"Invalid configuration: {str(e)}")
+                except Exception as e:
+                    st.error(f"Error saving memory settings: {str(e)}")
+

@@ -3,15 +3,15 @@ from typing import Dict, List, Any
 from langgraph.graph import StateGraph, END
 
 from .models import AgentRes, State
-from src.llm.llm_factory import LLMFactory
+from src.llm.crew_llm import create_llm
 from src.tools import ToolFactory
 from src.memory import SimpleMemory
 from src.utils.ui_helper import StreamlitUI
 
 class AgentWorkflow:
-    def __init__(self):
-        self.llm = LLMFactory.create_llm()
-        self.memory = SimpleMemory()
+    def __init__(self, memory=None):
+        self.llm = create_llm()
+        self.memory = memory if memory is not None else SimpleMemory()
         self.tools = ToolFactory.get_tools()
         self.ui = StreamlitUI()
     
@@ -64,6 +64,10 @@ class AgentWorkflow:
         res = state["lst_res"][-1]
         self.ui.update_current_step(f"Using {res.tool_name}...")
         
+        # Add tool execution message to progress
+        self.ui.add_chat_message("system", f"Using tool: {res.tool_name}", is_progress=True)
+        self.ui.add_chat_message("assistant", f"Input: {res.tool_input}", is_progress=True)
+        
         tool = self.tools[res.tool_name]
         agent_res = AgentRes(
             tool_name=res.tool_name,
@@ -71,12 +75,11 @@ class AgentWorkflow:
             tool_output=str(tool.invoke(**res.tool_input))
         )
         
+        # Add tool result to progress
+        self.ui.add_chat_message("system", f"Result from {res.tool_name}:", is_progress=True)
+        self.ui.add_chat_message("assistant", agent_res.tool_output[:200] + "..." if len(agent_res.tool_output) > 200 else agent_res.tool_output, is_progress=True)
+        
         return {"output": agent_res} if res.tool_name == "final_answer" else {"lst_res": [agent_res]}
-
-    def human_edges(self, state: State) -> str:
-        self.ui.update_current_step("Human decision point...")
-        choice = self.ui.create_human_feedback_buttons()
-        return choice if choice else "Human"
 
     def conditional_edges(self, state: State) -> str:
         last_res = state["lst_res"][-1]
@@ -84,9 +87,24 @@ class AgentWorkflow:
         self.ui.update_current_step(f"Moving to {next_node}...")
         return next_node
 
-    def human_node(self, state: State) -> State:
-        self.ui.update_current_step("Waiting for human input...")
-        return state
+    def should_use_agent2(self, state: State) -> bool:
+        """Determine if Agent2 should be used based on the response"""
+        if not state.get("output"):
+            return False
+            
+        output = state["output"].tool_output if hasattr(state["output"], "tool_output") else state["output"].get("tool_output", "")
+        # If the answer seems uncertain or incomplete, use Agent2
+        uncertainty_indicators = [
+            "I'm not sure",
+            "might be",
+            "could be",
+            "possibly",
+            "I don't have enough information",
+            "need more details",
+            "cannot find",
+            "unclear"
+        ]
+        return any(indicator.lower() in output.lower() for indicator in uncertainty_indicators)
 
     def create_graph(self) -> StateGraph:
         workflow = StateGraph(State)
@@ -99,15 +117,20 @@ class AgentWorkflow:
         workflow.add_edge(start_key="tool_browser", end_key="Agent1")
         workflow.add_conditional_edges(source="Agent1", path=self.conditional_edges)
         
-        # Human
-        workflow.add_node("Human", action=self.human_node)
-        workflow.add_conditional_edges(source="final_answer", path=self.human_edges)
-        
         # Agent 2
         workflow.add_node("Agent2", action=self.node_agent_2)
         workflow.add_node("tool_wikipedia", action=self.node_tool)
         workflow.add_edge(start_key="tool_wikipedia", end_key="Agent2")
         workflow.add_conditional_edges(source="Agent2", path=self.conditional_edges)
+        
+        # Add automatic decision edge from final_answer
+        def final_answer_edges(state: State) -> str:
+            return "Agent2" if self.should_use_agent2(state) else END
+        
+        workflow.add_conditional_edges(
+            source="final_answer",
+            path=final_answer_edges
+        )
         
         return workflow.compile()
 
@@ -119,18 +142,18 @@ class AgentWorkflow:
 
         Note, when using a tool, you provide the tool name and the arguments to use in JSON format. 
         For each call, you MUST ONLY use one tool AND the response format must ALWAYS be in the pattern:
-        ```json
         {"name":"<tool_name>", "parameters": {"<tool_input_key>":<tool_input_value>}}
-        ```
+
         Remember, do NOT use any tool with the same query more than once.
         Remember, if the user doesn't ask a specific question, you MUST use the `final_answer` tool directly.
         Remember, parameters are case-sensitive, and must be written exactly as in the tool description.
 
-        Every time the user asks a question, you take note in the memory.
-        Every time you find some information related to the user's question, you take note in the memory.
+        When answering:
+        1. If you are very confident about the answer, provide a direct and complete response
+        2. If you are uncertain or need more information, indicate that in your response
+        3. Be explicit about any limitations or uncertainties in your answer
 
-        You should aim to collect information from a diverse range of sources before providing the answer to the user. 
-        Once you have collected plenty of information to answer the user's question use the `final_answer` tool.
+        Every time you find some information related to the user's question, you take note in the memory.
         """
 
     @staticmethod
@@ -138,9 +161,9 @@ class AgentWorkflow:
         return """
         Your goal is to use the `tool_wikipedia` ONLY ONCE to enrich the information already available.
         Note, when using a tool, you provide the tool name and the arguments to use in JSON format. 
-        For each call, you MUST ONLY use one tool AND the response format must ALWAYS be in the pattern:
-        ```json
+        For each call, you MUST ONLY use one tool AND the response format must ALWAYS be in the json response pattern given below:
+        
         {"name":"<tool_name>", "parameters": {"<tool_input_key>":<tool_input_value>}}
-        ```
+        
         First you must use the `tool_wikipedia`, then elaborate the information to answer the user's question with `final_answer` tool.
         """
