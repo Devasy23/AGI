@@ -1,12 +1,24 @@
 from crewai import Agent
 from src.llm.crew_llm import create_llm
 from src.tools.crew_tools import get_search_tools
-from crewai_tools import (
-    DirectoryReadTool,
-    FileReadTool
-)
 
 class CrewAgentFactory:
+    @staticmethod
+    def create_planner_agent():
+        """Creates a planner agent that determines query type and best approach"""
+        return Agent(
+            role='Query Planner',
+            goal='Analyze user queries and determine the best approach for responding',
+            backstory='''Expert at understanding user intent and efficiently routing queries.
+                        Identifies whether a query needs external information or just a simple response.
+                        Can determine if a query is a basic greeting, question, or complex research need.
+                        Optimizes the agent workflow to avoid unnecessary tool usage.''',
+            allow_delegation=True,
+            llm=create_llm(),
+            tools=[],  # Planner doesn't need tools, just decision-making capability
+            verbose=True
+        )
+        
     @staticmethod
     def create_research_agent():
         return Agent(
@@ -22,23 +34,6 @@ class CrewAgentFactory:
         )
 
     @staticmethod
-    def create_file_expert():
-        return Agent(
-            role='File Expert',
-            goal='Read and analyze files and directories efficiently',
-            backstory='''Specializes in reading and processing file contents.
-                        Expert at extracting relevant information from various file types.
-                        Focuses on organizing and presenting file data clearly.''',
-            allow_delegation=False,
-            llm=create_llm(),
-            tools=[
-                DirectoryReadTool(),
-                FileReadTool()
-            ],
-            verbose=True
-        )
-
-    @staticmethod
     def create_synthesizer_agent():
         return Agent(
             role='Information Synthesizer',
@@ -49,6 +44,6 @@ class CrewAgentFactory:
                         Highlights any contradictions or uncertainties in the information.''',
             allow_delegation=False,
             llm=create_llm(),
-            tools=[FileReadTool()],  # Synthesizer mainly needs to read and combine information
+            tools=[],  # Synthesizer doesn't need tools, just synthesis capability
             verbose=True
         )
