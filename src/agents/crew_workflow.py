@@ -5,6 +5,7 @@ from src.utils.ui_helper import StreamlitUI
 from .crew_agents import CrewAgentFactory
 from .models import AgentRes
 from src.knowledge import KnowledgeBase
+from src.config.llm_config import LLMConfig
 
 class CrewWorkflow:
     def __init__(self, memory=None):
@@ -23,7 +24,9 @@ class CrewWorkflow:
         
         # Get knowledge sources for CrewAI
         knowledge_sources = self.knowledge_base.get_crew_knowledge_sources()
-        
+        if knowledge_sources:
+            st.write("🔍 Vector store available for queries with", len(knowledge_sources), "sources")
+            
         # First, create a planning task to determine how to handle the query
         planning_task = Task(
             description=f"""Analyze this user query and determine the best approach:
@@ -85,6 +88,7 @@ Provide a friendly, conversational response without using any search tools.
         
         elif planning_decision == "KNOWLEDGE_BASE" and knowledge_sources:
             # For knowledge base queries
+            st.write("🔍 Querying vector store for:", query)
             knowledge_task = Task(
                 description=f"""Answer the following query using our knowledge base:
 Query: "{query}"
@@ -109,7 +113,7 @@ Use only the knowledge base to answer the query. Be specific about which sources
             
             # Log knowledge sources being used
             source_names = [source.name for source in self.knowledge_base.get_enabled_sources()]
-            self.ui.add_chat_message("system", f"Using knowledge sources: {', '.join(source_names)}", is_progress=True)
+            self.ui.add_chat_message("system", f"📚 Using knowledge sources: {', '.join(source_names)}", is_progress=True)
             
         else:  # "INTERNET_SEARCH" or if no knowledge sources available
             # For internet searches
@@ -130,7 +134,14 @@ Focus on finding information from online sources.
                 description="Synthesize findings into a comprehensive response",
                 agent=synthesizer,
                 expected_output="A clear, well-structured response",
-                context=[research_task]
+                context=[research_task],
+                embedder={
+                    "provider": "google",
+                    "config": {
+                        "model": "models/text-embedding-004",
+                        "api_key": LLMConfig().get_gemini_api_key(),
+                    }
+                }
             )
             
             # Create crew with knowledge sources if available (to enhance research)
@@ -138,9 +149,17 @@ Focus on finding information from online sources.
                 "agents": [researcher, synthesizer],
                 "tasks": [research_task, synthesis_task],
                 "verbose": True,
-                "process": "sequential"
+                "process": "sequential",
+                "knowledge_sources": knowledge_sources if knowledge_sources else None,
+                "embedder": {
+                    "provider": "google",
+                    "config": {
+                        "model": "models/text-embedding-004",
+                        "api_key": LLMConfig().get_gemini_api_key(),
+                    }
+                }
             }
-            
+            print (f"Knowledge sources: {knowledge_sources}")
             # Add knowledge sources if available
             if knowledge_sources:
                 crew_kwargs["knowledge_sources"] = knowledge_sources

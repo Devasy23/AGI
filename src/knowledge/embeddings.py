@@ -44,46 +44,6 @@ class SentenceTransformersEmbedding(EmbeddingModel):
         return self.model.encode(text, convert_to_numpy=True).tolist()
 
 
-class OpenAIEmbedding(EmbeddingModel):
-    """Embedding model using OpenAI's API"""
-    
-    def __init__(self, api_key: Optional[str] = None):
-        """Initialize with API key"""
-        try:
-            from openai import OpenAI
-            self.api_key = api_key or MemoryConfig.openai_api_key
-            if not self.api_key:
-                raise ValueError("OpenAI API key is required")
-            self.client = OpenAI(api_key=self.api_key)
-        except ImportError:
-            raise ImportError(
-                "Could not import openai. Please install it with `pip install openai`."
-            )
-    
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        """Embed a list of documents using OpenAI API"""
-        results = []
-        # Process in batches to avoid token limits
-        batch_size = 20
-        for i in range(0, len(texts), batch_size):
-            batch_texts = texts[i:i+batch_size]
-            response = self.client.embeddings.create(
-                input=batch_texts,
-                model="text-embedding-ada-002"
-            )
-            batch_embeddings = [e.embedding for e in response.data]
-            results.extend(batch_embeddings)
-        return results
-    
-    def embed_query(self, text: str) -> List[float]:
-        """Embed a query string using OpenAI API"""
-        response = self.client.embeddings.create(
-            input=text,
-            model="text-embedding-ada-002"
-        )
-        return response.data[0].embedding
-
-
 class HuggingFaceEmbedding(EmbeddingModel):
     """Embedding model using HuggingFace's API"""
     
@@ -131,7 +91,7 @@ class HuggingFaceEmbedding(EmbeddingModel):
 class GoogleEmbedding(EmbeddingModel):
     """Embedding model using Google's Embedding API"""
     
-    def __init__(self, api_key: Optional[str] = None, model_name: str = "textembedding-gecko"):
+    def __init__(self, api_key: Optional[str] = None, model_name: str = "models/text-embedding-004"):
         """Initialize with API key and model name"""
         try:
             import google.generativeai as genai
@@ -184,8 +144,6 @@ class EmbeddingFactory:
         
         if embedding_type == "sentence-transformers":
             return SentenceTransformersEmbedding(model_name=MemoryConfig.embedding_model_name)
-        elif embedding_type == "openai":
-            return OpenAIEmbedding(api_key=MemoryConfig.openai_api_key)
         elif embedding_type == "huggingface":
             return HuggingFaceEmbedding(api_key=MemoryConfig.hf_api_key)
         elif embedding_type == "google":
@@ -194,4 +152,6 @@ class EmbeddingFactory:
                 model_name=KnowledgeConfig.google_embedding_model
             )
         else:
-            raise ValueError(f"Unsupported embedding model type: {embedding_type}")
+            # Default to sentence-transformers if type not recognized
+            print(f"Embedding type '{embedding_type}' not recognized, using sentence-transformers instead")
+            return SentenceTransformersEmbedding(model_name="all-MiniLM-L6-v2")

@@ -71,10 +71,17 @@ class KnowledgeBase:
     Manages sources and integration with CrewAI knowledge system.
     """
     
-    def __init__(self):
-        """Initialize the knowledge base"""
+    def __init__(self, chunk_size: int = 500, chunk_overlap: int = 50):
+        """Initialize the knowledge base
+        
+        Args:
+            chunk_size: Size of chunks for processing large documents
+            chunk_overlap: Overlap between chunks to maintain context
+        """
         self.knowledge_dir = KnowledgeConfig.knowledge_dir
         self.collection_name = KnowledgeConfig.collection_name
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
         self.sources: List[KnowledgeSource] = []
         self._load_sources()
     
@@ -121,18 +128,25 @@ class KnowledgeBase:
             bool: Success status
         """
         try:
-            # Use absolute path to ensure proper file location
-            file_path = os.path.abspath(os.path.join(self.knowledge_dir, f"{name}.pdf"))
-            # Create directory if it doesn't exist
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            # Ensure name has .pdf extension
+            if not name.lower().endswith('.pdf'):
+                name = f"{name}.pdf"
             
+            # Create knowledge directory if it doesn't exist
+            os.makedirs(self.knowledge_dir, exist_ok=True)
+            
+            # Use os.path.join for proper path construction
+            file_path = os.path.join(self.knowledge_dir, name)
+            
+            # Write the PDF file
             with open(file_path, "wb") as f:
                 f.write(file_content)
             
+            # Create source with relative path for storage
             source = KnowledgeSource(
                 source_type="pdf",
                 name=name,
-                content_path=file_path,
+                content_path=os.path.basename(file_path),  # Store only filename, not full path
                 description=description
             )
             self.sources.append(source)
@@ -153,18 +167,25 @@ class KnowledgeBase:
             bool: Success status
         """
         try:
-            # Use absolute path to ensure proper file location
-            file_path = os.path.abspath(os.path.join(self.knowledge_dir, f"{name}.csv"))
-            # Create directory if it doesn't exist
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            # Ensure name has .csv extension
+            if not name.lower().endswith('.csv'):
+                name = f"{name}.csv"
             
+            # Create knowledge directory if it doesn't exist
+            os.makedirs(self.knowledge_dir, exist_ok=True)
+            
+            # Use os.path.join for proper path construction
+            file_path = os.path.join(self.knowledge_dir, name)
+            
+            # Write the CSV file
             with open(file_path, "wb") as f:
                 f.write(file_content)
             
+            # Create source with relative path for storage
             source = KnowledgeSource(
                 source_type="csv",
                 name=name,
-                content_path=file_path,
+                content_path=os.path.basename(file_path),
                 description=description
             )
             self.sources.append(source)
@@ -185,18 +206,25 @@ class KnowledgeBase:
             bool: Success status
         """
         try:
-            # Use absolute path to ensure proper file location
-            file_path = os.path.abspath(os.path.join(self.knowledge_dir, f"{name}.json"))
-            # Create directory if it doesn't exist
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            # Ensure name has .json extension
+            if not name.lower().endswith('.json'):
+                name = f"{name}.json"
             
+            # Create knowledge directory if it doesn't exist
+            os.makedirs(self.knowledge_dir, exist_ok=True)
+            
+            # Use os.path.join for proper path construction
+            file_path = os.path.join(self.knowledge_dir, name)
+            
+            # Write the JSON file
             with open(file_path, "wb") as f:
                 f.write(file_content)
             
+            # Create source with relative path for storage
             source = KnowledgeSource(
                 source_type="json",
                 name=name,
-                content_path=file_path,
+                content_path=os.path.basename(file_path),
                 description=description
             )
             self.sources.append(source)
@@ -328,39 +356,46 @@ class KnowledgeBase:
         
         for source in self.get_enabled_sources():
             try:
-                # Normalize path to handle both absolute and relative paths correctly
-                if source.source_type != "url":
-                    # If file exists as is, use it directly
-                    print(f"Checking file path: {source.content_path}")
-                    if os.path.exists(source.content_path):
-                        file_path = source.content_path
-                    # Otherwise try to get just the filename and look in the knowledge directory
-                    else:
-                        filename = os.path.basename(source.content_path)
-                        possible_path = os.path.join(self.knowledge_dir, filename)
-                        if os.path.exists(possible_path):
-                            file_path = possible_path
-                        else:
-                            st.error(f"File not found for {source.name}: {source.content_path}")
-                            st.error(f"Also checked: {possible_path}")
-                            continue
-                else:
-                    print(f"Using URL for source: {source.name}")
-                    file_path = source.content_path  # For URLs, use as is
+                # For debugging
+                st.write(f"Processing source: {source.name} ({source.source_type})")
                 
-                # Create appropriate knowledge source based on file type
+                # For PDF sources, just use the filename without path
+                # (file should already be copied to working directory by CrewWorkflow._prepare_knowledge_files)
                 if source.source_type == "pdf":
-                    crew_sources.append(PDFKnowledgeSource(file_paths=[file_path]))
-                elif source.source_type == "csv":
-                    crew_sources.append(CSVKnowledgeSource(file_paths=[file_path]))
-                elif source.source_type == "json":
-                    crew_sources.append(JSONKnowledgeSource(file_paths=[file_path]))
-                elif source.source_type == "text":
-                    crew_sources.append(TextFileKnowledgeSource(file_paths=[file_path]))
+                    filename = os.path.basename(source.content_path)
+                    st.write(f"Using PDF with filename only: {filename}")
+                    
+                    # Verify the file exists in current working directory
+                    working_dir_path = os.path.join(os.getcwd(), filename)
+                    if os.path.exists(working_dir_path):
+                        crew_sources.append(PDFKnowledgeSource(file_paths=[filename]))
+                        st.write(f"Successfully added PDF source: {source.name}")
+                    else:
+                        st.error(f"PDF file not found in working directory: {working_dir_path}")
+                        
+                # Handle other file types
+                elif source.source_type in ["csv", "json", "text"]:
+                    # For other file types, use the full path
+                    if os.path.exists(source.content_path):
+                        if source.source_type == "csv":
+                            crew_sources.append(CSVKnowledgeSource(file_paths=[source.content_path]))
+                        elif source.source_type == "json":
+                            crew_sources.append(JSONKnowledgeSource(file_paths=[source.content_path]))
+                        elif source.source_type == "text":
+                            crew_sources.append(TextFileKnowledgeSource(file_paths=[source.content_path]))
+                        st.write(f"Successfully added {source.source_type.upper()} source: {source.name}")
+                    else:
+                        st.error(f"File not found: {source.content_path}")
+                
+                # Handle URL sources
                 elif source.source_type == "url":
-                    crew_sources.append(CrewDoclingSource(file_paths=[file_path]))
+                    crew_sources.append(CrewDoclingSource(file_paths=[source.content_path]))
+                    st.write(f"Successfully added URL source: {source.name}")
+                
             except Exception as e:
                 st.error(f"Error loading knowledge source {source.name}: {str(e)}")
+                import traceback
+                st.error(traceback.format_exc())
         
         return crew_sources
     
@@ -377,5 +412,24 @@ class KnowledgeBase:
         
         return Knowledge(
             sources=sources,
-            collection_name=self.collection_name
+            collection_name=self.collection_name,
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap
         )
+    
+    def reset_memories(self) -> bool:
+        """
+        Reset the knowledge base memories.
+        Useful when knowledge sources have been updated.
+        
+        Returns:
+            bool: Success status
+        """
+        try:
+            knowledge = self.create_crew_knowledge()
+            if knowledge:
+                knowledge.reset_memories()
+            return True
+        except Exception as e:
+            st.error(f"Error resetting memories: {str(e)}")
+            return False

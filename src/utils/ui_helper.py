@@ -73,8 +73,9 @@ class StreamlitUI:
             # Embedding Model Selection
             embedding_model = st.selectbox(
                 "Embedding Model",
-                options=["sentence-transformers", "openai", "huggingface"],
-                index=["sentence-transformers", "openai", "huggingface"].index(MemoryConfig.embedding_model)
+                options=["sentence-transformers", "huggingface", "google"],
+                index=["sentence-transformers", "huggingface", "google"].index(MemoryConfig.embedding_model)
+                if MemoryConfig.embedding_model in ["sentence-transformers", "huggingface", "google"] else 0
             )
             
             # Model specific settings
@@ -83,16 +84,16 @@ class StreamlitUI:
                     "Model Name",
                     value=MemoryConfig.embedding_model_name
                 )
-            elif embedding_model == "openai":
-                openai_key = st.text_input(
-                    "OpenAI API Key",
-                    value=MemoryConfig.openai_api_key,
-                    type="password"
-                )
             elif embedding_model == "huggingface":
                 hf_key = st.text_input(
                     "HuggingFace API Key",
                     value=MemoryConfig.hf_api_key,
+                    type="password"
+                )
+            elif embedding_model == "google":
+                google_key = st.text_input(
+                    "Google API Key",
+                    value=MemoryConfig.google_api_key,
                     type="password"
                 )
             
@@ -124,8 +125,8 @@ class StreamlitUI:
                         "VECTOR_STORE": vector_store if vector_store else "",
                         "EMBEDDING_MODEL": embedding_model,
                         "EMBEDDING_MODEL_NAME": embedding_model_name if embedding_model == "sentence-transformers" else MemoryConfig.embedding_model_name,
-                        "OPENAI_API_KEY": openai_key if embedding_model == "openai" else MemoryConfig.openai_api_key,
                         "HF_API_KEY": hf_key if embedding_model == "huggingface" else MemoryConfig.hf_api_key,
+                        "GOOGLE_API_KEY": google_key if embedding_model == "google" else MemoryConfig.google_api_key,
                         "CHROMA_PERSIST_DIR": persist_dir if vector_store == "chroma" else MemoryConfig.chroma_persist_dir,
                         "QDRANT_URL": qdrant_url if vector_store == "qdrant" else MemoryConfig.qdrant_url,
                         "QDRANT_API_KEY": qdrant_key if vector_store == "qdrant" else MemoryConfig.qdrant_api_key
@@ -143,8 +144,12 @@ class StreamlitUI:
     @staticmethod
     def setup_knowledge_config_ui():
         """Setup UI for knowledge base configuration"""
-        with st.sidebar:
-            st.markdown("### Knowledge Base")
+        st.markdown("### Knowledge Base Configuration")
+
+        # Sources Tab and Embedding Model Tab
+        tab1, tab2, tab3 = st.tabs(["Knowledge Sources", "Embedding Model", "Chunking Config"])
+
+        with tab1:
             # Initialize knowledge base
             if 'knowledge_base' not in st.session_state:
                 st.session_state.knowledge_base = KnowledgeBase()
@@ -277,12 +282,13 @@ class StreamlitUI:
                 if st.button("Refresh Sources"):
                     st.rerun()
             
+        with tab2:
             # Embedding model configuration for knowledge base
             st.markdown("#### Embedding Model Settings")
             
             # Get the current embedding model
             current_embedding_model = MemoryConfig.embedding_model
-            embedding_options = ["sentence-transformers", "openai", "huggingface", "google"]
+            embedding_options = ["sentence-transformers", "huggingface", "google"]
             try:
                 embedding_index = embedding_options.index(current_embedding_model)
             except ValueError:
@@ -323,4 +329,54 @@ class StreamlitUI:
                     st.success("Knowledge settings saved successfully!")
                 except Exception as e:
                     st.error(f"Error saving knowledge settings: {str(e)}")
+        
+        with tab3:
+            st.markdown("#### Document Chunking Settings")
+            
+            # Get current chunking settings
+            current_chunk_size = KnowledgeConfig.chunk_size
+            current_chunk_overlap = KnowledgeConfig.chunk_overlap
+            
+            # Chunk size input
+            chunk_size = st.number_input(
+                "Chunk Size",
+                min_value=100,
+                max_value=2000,
+                value=current_chunk_size,
+                help="Size of text chunks for processing large documents. Larger chunks preserve more context but use more memory."
+            )
+            
+            # Chunk overlap input
+            chunk_overlap = st.number_input(
+                "Chunk Overlap",
+                min_value=0,
+                max_value=chunk_size-1,  # Overlap must be less than chunk size
+                value=min(current_chunk_overlap, chunk_size-1),
+                help="Overlap between chunks to maintain context across chunk boundaries."
+            )
+            
+            if st.button("Save Chunking Settings"):
+                try:
+                    # Update environment variables
+                    if "env_vars" not in st.session_state:
+                        st.session_state.env_vars = {}
+                    
+                    st.session_state.env_vars["KNOWLEDGE_CHUNK_SIZE"] = str(chunk_size)
+                    st.session_state.env_vars["KNOWLEDGE_CHUNK_OVERLAP"] = str(chunk_overlap)
+                    
+                    # Validate new settings
+                    if chunk_overlap >= chunk_size:
+                        st.error("Chunk overlap must be smaller than chunk size")
+                        return
+                    
+                    st.success("Chunking settings saved successfully!")
+                    
+                    # Reset memories to apply new chunking settings
+                    if st.session_state.get("knowledge_base"):
+                        if st.session_state.knowledge_base.reset_memories():
+                            st.success("Knowledge base memories reset successfully!")
+                        else:
+                            st.warning("Knowledge base memories reset failed. Changes will apply to new documents only.")
+                except Exception as e:
+                    st.error(f"Error saving chunking settings: {str(e)}")
 
