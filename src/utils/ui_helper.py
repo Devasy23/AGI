@@ -66,7 +66,8 @@ class StreamlitUI:
             vector_store = st.selectbox(
                 "Vector Store (Optional)",
                 options=["none", "chroma", "qdrant", "faiss"],
-                index=["none", "chroma", "qdrant", "faiss"].index(current_vector_store)
+                index=["none", "chroma", "qdrant", "faiss"].index(current_vector_store),
+                key="memory_vector_store"
             )
             vector_store = None if vector_store == "none" else vector_store
             
@@ -75,43 +76,50 @@ class StreamlitUI:
                 "Embedding Model",
                 options=["sentence-transformers", "huggingface", "google"],
                 index=["sentence-transformers", "huggingface", "google"].index(MemoryConfig.embedding_model)
-                if MemoryConfig.embedding_model in ["sentence-transformers", "huggingface", "google"] else 0
+                if MemoryConfig.embedding_model in ["sentence-transformers", "huggingface", "google"] else 0,
+                key="memory_embedding_model"
             )
             
             # Model specific settings
             if embedding_model == "sentence-transformers":
                 embedding_model_name = st.text_input(
                     "Model Name",
-                    value=MemoryConfig.embedding_model_name
+                    value=MemoryConfig.embedding_model_name,
+                    key="memory_model_name"
                 )
             elif embedding_model == "huggingface":
                 hf_key = st.text_input(
                     "HuggingFace API Key",
                     value=MemoryConfig.hf_api_key,
-                    type="password"
+                    type="password",
+                    key="memory_hf_key"
                 )
             elif embedding_model == "google":
                 google_key = st.text_input(
                     "Google API Key",
                     value=MemoryConfig.google_api_key,
-                    type="password"
+                    type="password",
+                    key="memory_google_key"
                 )
             
             # Vector store specific settings (only show if a vector store is selected)
             if vector_store == "chroma":
                 persist_dir = st.text_input(
                     "Persist Directory",
-                    value=MemoryConfig.chroma_persist_dir
+                    value=MemoryConfig.chroma_persist_dir,
+                    key="memory_chroma_dir"
                 )
             elif vector_store == "qdrant":
                 qdrant_url = st.text_input(
                     "Qdrant URL",
-                    value=MemoryConfig.qdrant_url
+                    value=MemoryConfig.qdrant_url,
+                    key="memory_qdrant_url"
                 )
                 qdrant_key = st.text_input(
                     "Qdrant API Key",
                     value=MemoryConfig.qdrant_api_key,
-                    type="password"
+                    type="password",
+                    key="memory_qdrant_key"
                 )
             
             if st.button("Save Memory Settings"):
@@ -297,7 +305,8 @@ class StreamlitUI:
             embedding_model = st.selectbox(
                 "Embedding Model",
                 options=embedding_options,
-                index=embedding_index
+                index=embedding_index,
+                key="knowledge_embedding_model"
             )
             
             # Show Google-specific settings if Google is selected
@@ -305,11 +314,13 @@ class StreamlitUI:
                 google_api_key = st.text_input(
                     "Google API Key",
                     value=KnowledgeConfig.google_api_key,
-                    type="password"
+                    type="password",
+                    key="knowledge_google_key"
                 )
                 google_model = st.text_input(
                     "Google Embedding Model",
-                    value=KnowledgeConfig.google_embedding_model
+                    value=KnowledgeConfig.google_embedding_model,
+                    key="knowledge_google_model"
                 )
             
             if st.button("Save Knowledge Settings"):
@@ -343,7 +354,8 @@ class StreamlitUI:
                 min_value=100,
                 max_value=2000,
                 value=current_chunk_size,
-                help="Size of text chunks for processing large documents. Larger chunks preserve more context but use more memory."
+                help="Size of text chunks for processing large documents. Larger chunks preserve more context but use more memory.",
+                key="knowledge_chunk_size"
             )
             
             # Chunk overlap input
@@ -352,7 +364,8 @@ class StreamlitUI:
                 min_value=0,
                 max_value=chunk_size-1,  # Overlap must be less than chunk size
                 value=min(current_chunk_overlap, chunk_size-1),
-                help="Overlap between chunks to maintain context across chunk boundaries."
+                help="Overlap between chunks to maintain context across chunk boundaries.",
+                key="knowledge_chunk_overlap"
             )
             
             if st.button("Save Chunking Settings"):

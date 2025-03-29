@@ -2,6 +2,8 @@ from typing import List, Dict
 import streamlit as st
 from crewai import Task, Crew
 from src.utils.ui_helper import StreamlitUI
+import os
+import shutil
 from .crew_agents import CrewAgentFactory
 from .models import AgentRes
 from src.knowledge import KnowledgeBase
@@ -12,6 +14,27 @@ class CrewWorkflow:
         self.ui = StreamlitUI()
         self.agent_factory = CrewAgentFactory()
         self.knowledge_base = KnowledgeBase() if 'knowledge_base' not in st.session_state else st.session_state.knowledge_base
+        
+        # Copy PDF files to current working directory to fix CrewAI path issues
+        self._prepare_knowledge_files()
+
+    def _prepare_knowledge_files(self):
+        """
+        Copy PDF files from the knowledge directory to the current working directory
+        to work around CrewAI's path handling issues
+        """
+        try:
+            for source in self.knowledge_base.get_enabled_sources():
+                if source.source_type == "pdf" and os.path.exists(source.content_path):
+                    # Get just the filename
+                    filename = os.path.basename(source.content_path)
+                    # Copy to current working directory
+                    target_path = os.path.join(os.getcwd(), filename)
+                    if not os.path.exists(target_path):
+                        shutil.copy2(source.content_path, target_path)
+                        st.write(f"Prepared knowledge file: {filename}")
+        except Exception as e:
+            st.error(f"Error preparing knowledge files: {str(e)}")
 
     def process_query(self, query: str, chat_history: List[Dict[str, str]], lst_res: List) -> str:
         # Initialize all agents
