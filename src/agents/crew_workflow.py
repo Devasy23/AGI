@@ -1,13 +1,16 @@
 from typing import List, Dict
+import streamlit as st
 from crewai import Task, Crew
 from src.utils.ui_helper import StreamlitUI
 from .crew_agents import CrewAgentFactory
 from .models import AgentRes
+from src.knowledge import KnowledgeBase
 
 class CrewWorkflow:
     def __init__(self, memory=None):
         self.ui = StreamlitUI()
         self.agent_factory = CrewAgentFactory()
+        self.knowledge_base = KnowledgeBase() if 'knowledge_base' not in st.session_state else st.session_state.knowledge_base
 
     def process_query(self, query: str, chat_history: List[Dict[str, str]], lst_res: List) -> str:
         # Initialize all agents
@@ -17,6 +20,9 @@ class CrewWorkflow:
         
         # Create context string from chat history
         context_str = "\n".join([msg["content"] for msg in chat_history])
+        
+        # Get knowledge sources for CrewAI
+        knowledge_sources = self.knowledge_base.get_crew_knowledge_sources()
         
         # First, create a planning task to determine how to handle the query
         planning_task = Task(
@@ -29,10 +35,12 @@ Context from previous interactions:
 Your job is to determine:
 1. If this is a simple greeting or conversation (like "hello", "hi", "how are you")
 2. If this requires searching the internet for information
+3. If this can be answered using our knowledge base
 
 Return ONLY ONE of these exact responses:
 - "SIMPLE_RESPONSE" - For greetings and basic conversation
 - "INTERNET_SEARCH" - When we need to search online for information
+- "KNOWLEDGE_BASE" - When we can use our knowledge base to answer the query
 """,
             agent=planner,
             expected_output="A single decision about how to handle the query"
@@ -74,8 +82,36 @@ Provide a friendly, conversational response without using any search tools.
                 verbose=True,
                 process="sequential"
             )
+        
+        elif planning_decision == "KNOWLEDGE_BASE" and knowledge_sources:
+            # For knowledge base queries
+            knowledge_task = Task(
+                description=f"""Answer the following query using our knowledge base:
+Query: "{query}"
+
+Context from previous interactions:
+{context_str}
+
+Use only the knowledge base to answer the query. Be specific about which sources you're using.
+""",
+                agent=synthesizer,
+                expected_output="A detailed answer based on knowledge base content"
+            )
             
-        else:  # "INTERNET_SEARCH" or any other response
+            # Create crew with knowledge sources
+            crew = Crew(
+                agents=[synthesizer],
+                tasks=[knowledge_task],
+                verbose=True,
+                process="sequential",
+                knowledge_sources=knowledge_sources
+            )
+            
+            # Log knowledge sources being used
+            source_names = [source.name for source in self.knowledge_base.get_enabled_sources()]
+            self.ui.add_chat_message("system", f"Using knowledge sources: {', '.join(source_names)}", is_progress=True)
+            
+        else:  # "INTERNET_SEARCH" or if no knowledge sources available
             # For internet searches
             research_task = Task(
                 description=f"""Research the following query:
@@ -97,12 +133,21 @@ Focus on finding information from online sources.
                 context=[research_task]
             )
             
-            crew = Crew(
-                agents=[researcher, synthesizer],
-                tasks=[research_task, synthesis_task],
-                verbose=True,
-                process="sequential"
-            )
+            # Create crew with knowledge sources if available (to enhance research)
+            crew_kwargs = {
+                "agents": [researcher, synthesizer],
+                "tasks": [research_task, synthesis_task],
+                "verbose": True,
+                "process": "sequential"
+            }
+            
+            # Add knowledge sources if available
+            if knowledge_sources:
+                crew_kwargs["knowledge_sources"] = knowledge_sources
+                source_names = [source.name for source in self.knowledge_base.get_enabled_sources()]
+                self.ui.add_chat_message("system", f"Using knowledge sources as supplementary context: {', '.join(source_names)}", is_progress=True)
+            
+            crew = Crew(**crew_kwargs)
             
         # Execute the chosen workflow and get result
         result = crew.kickoff()
