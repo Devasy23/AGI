@@ -5,4 +5,4 @@ __pycache__/
 *.pyo
 *.pyd
 .env
-memory_state.json
+knowledge/

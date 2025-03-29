@@ -11,7 +11,7 @@ class MemoryConfig:
         return value or ""
 
     vector_store: Optional[Literal["chroma", "qdrant", "faiss"]] = clean_env_value(os.getenv("VECTOR_STORE", ""))
-    embedding_model: Literal["sentence-transformers", "openai", "huggingface"] = clean_env_value(os.getenv("EMBEDDING_MODEL", "sentence-transformers"))
+    embedding_model: Literal["sentence-transformers", "huggingface", "google"] = clean_env_value(os.getenv("EMBEDDING_MODEL", "huggingface"))
     embedding_model_name: str = clean_env_value(os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2"))
     
     # Vector store specific settings
@@ -20,8 +20,8 @@ class MemoryConfig:
     qdrant_api_key: str = clean_env_value(os.getenv("QDRANT_API_KEY", ""))
     
     # Embedding API keys
-    openai_api_key: str = clean_env_value(os.getenv("OPENAI_API_KEY", ""))
     hf_api_key: str = clean_env_value(os.getenv("HF_API_KEY", ""))
+    google_api_key: str = clean_env_value(os.getenv("GOOGLE_API_KEY", ""))
     
     @classmethod
     def get_config(cls):
@@ -32,8 +32,8 @@ class MemoryConfig:
             "chroma_persist_dir": cls.chroma_persist_dir,
             "qdrant_url": cls.qdrant_url,
             "qdrant_api_key": cls.qdrant_api_key,
-            "openai_api_key": cls.openai_api_key,
-            "hf_api_key": cls.hf_api_key
+            "hf_api_key": cls.hf_api_key,
+            "google_api_key": cls.google_api_key
         }
     
     @classmethod
@@ -47,8 +47,8 @@ class MemoryConfig:
                 raise ValueError("Qdrant URL and API key are required when using Qdrant vector store")
         
         # Only validate embedding model settings if using API-based models
-        if config["embedding_model"] == "openai" and not config["openai_api_key"]:
-            raise ValueError("OpenAI API key is required when using OpenAI embeddings")
-        
         if config["embedding_model"] == "huggingface" and not config["hf_api_key"]:
             raise ValueError("HuggingFace API key is required when using HuggingFace embeddings")
+            
+        if config["embedding_model"] == "google" and not config["google_api_key"]:
+            raise ValueError("Google API key is required when using Google embeddings")
