@@ -54,7 +54,15 @@ Return ONLY ONE of these exact responses:
             agents=[planner],
             tasks=[planning_task],
             verbose=True,
-            process="sequential"
+            process="sequential",
+            knowledge_sources=knowledge_sources,
+            embedder={
+                "provider": "google",
+                "config": {
+                    "model": "models/text-embedding-004",
+                    "api_key": LLMConfig().get_gemini_api_key(),
+                }
+            }
         )
         
         planning_result = planning_crew.kickoff()
@@ -108,7 +116,14 @@ Use only the knowledge base to answer the query. Be specific about which sources
                 tasks=[knowledge_task],
                 verbose=True,
                 process="sequential",
-                knowledge_sources=knowledge_sources
+                knowledge_sources=knowledge_sources,
+                embedder={
+                    "provider": "google",
+                    "config": {
+                        "model": "models/text-embedding-004",
+                        "api_key": LLMConfig().get_gemini_api_key(),
+                    }
+                }
             )
             
             # Log knowledge sources being used
